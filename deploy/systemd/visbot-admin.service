@@ -1,0 +1,28 @@
+[Unit]
+Description=Visbot admin panel (port 9002)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/visbot/server
+ExecStart=/usr/bin/node bin/admin.js
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=visbot-admin
+
+# The admin panel writes uploaded photos into /var/www/visbot/assets/products,
+# so ProtectSystem is relaxed to "full" (|/usr, /boot, /etc read-only) rather
+# than "strict".
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

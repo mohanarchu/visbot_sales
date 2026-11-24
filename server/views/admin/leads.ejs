@@ -1,0 +1,131 @@
+<%
+  const qs = (over) => {
+    const base = { status: f.status, source: f.source, priority: f.priority, q: f.q,
+                   due: f.due ? "1" : "", open: f.open ? "1" : "" };
+    const merged = Object.assign({}, base, over || {});
+    const parts = Object.entries(merged)
+      .filter(([, v]) => v !== "" && v !== undefined && v !== null)
+      .map(([k, v]) => k + "=" + encodeURIComponent(v));
+    return "/admin/leads" + (parts.length ? "?" + parts.join("&") : "");
+  };
+%>
+<%- include("_head", { title: "All leads", subtitle: total + (total === 1 ? " lead" : " leads") + " matching the current filter", nav: "leads" }) %>
+
+<nav class="tabs">
+  <a class="tab <%= !f.status && !f.due && !f.open ? "active" : "" %>" href="<%= qs({ status: "", due: "", open: "", page: "" }) %>">
+    All <span class="tab-n"><%= allCount %></span>
+  </a>
+  <% LEAD.STATUSES.forEach((s) => { %>
+  <a class="tab <%= f.status === s.key ? "active" : "" %>" href="<%= qs({ status: s.key, due: "", open: "", page: "" }) %>">
+    <%= s.label %> <span class="tab-n"><%= tabCounts[s.key] || 0 %></span>
+  </a>
+  <% }) %>
+  <a class="tab <%= f.due ? "active" : "" %>" href="<%= qs({ due: "1", status: "", open: "", page: "" }) %>">
+    <%- icon("clock") %>Follow-ups due
+  </a>
+</nav>
+
+<form class="toolbar" method="get" action="/admin/leads">
+  <% if (f.status) { %><input type="hidden" name="status" value="<%= f.status %>"><% } %>
+  <% if (f.due) { %><input type="hidden" name="due" value="1"><% } %>
+  <% if (f.open) { %><input type="hidden" name="open" value="1"><% } %>
+  <div class="search">
+    <%- icon("search") %>
+    <input type="search" name="q" value="<%= f.q %>" placeholder="Search name, phone, company, machine…" aria-label="Search leads">
+  </div>
+  <select name="source" aria-label="Filter by source" onchange="this.form.submit()">
+    <option value="">All sources</option>
+    <% LEAD.SOURCES.forEach((s) => { %>
+    <option value="<%= s.key %>" <%= f.source === s.key ? "selected" : "" %>><%= s.label %></option>
+    <% }) %>
+  </select>
+  <select name="priority" aria-label="Filter by priority" onchange="this.form.submit()">
+    <option value="">Any priority</option>
+    <% LEAD.PRIORITIES.forEach((p) => { %>
+    <option value="<%= p.key %>" <%= f.priority === p.key ? "selected" : "" %>><%= p.label %> priority</option>
+    <% }) %>
+  </select>
+  <button class="btn btn--ghost" type="submit">Search</button>
+  <% if (f.q || f.source || f.priority) { %>
+  <a class="btn btn--ghost" href="<%= qs({ q: "", source: "", priority: "" }) %>">Clear</a>
+  <% } %>
+  <span class="spacer"></span>
+  <a class="btn btn--ghost" href="/admin/leads/export.csv"><%- icon("download") %>Export CSV</a>
+  <a class="btn" href="/admin/leads/new"><%- icon("plus") %>Add a lead</a>
+</form>
+
+<div class="panel">
+  <% if (leads.length) { %>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr><th>Lead</th><th>Interested in</th><th>Source</th><th>Status</th><th>Follow-up</th><th>Received</th><th class="col-actions"></th></tr>
+      </thead>
+      <tbody>
+        <% leads.forEach((l) => {
+             const sm = LEAD.statusMeta(l.status);
+             const pm = LEAD.priorityMeta(l.priority);
+             const d = daysUntil(l.next_followup);
+        %>
+        <tr>
+          <td>
+            <a class="name" href="/admin/leads/<%= l.id %>"><%= l.name %></a>
+            <% if (l.priority === "high") { %> <span class="chip chip--warn">High</span><% } %>
+            <div class="sub">
+              <%= [l.phone, l.company, [l.city, l.state].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "No contact details" %>
+            </div>
+          </td>
+          <td class="sub" style="max-width:260px;"><%= l.interest || "—" %></td>
+          <td class="sub nowrap"><%= LEAD.sourceLabel(l.source) %></td>
+          <td><span class="chip chip--<%= sm.chip || "plain" %>"><%= sm.label %></span></td>
+          <td class="nowrap">
+            <% if (l.next_followup) { %>
+              <span class="chip <%= d < 0 ? "chip--warn" : "chip--muted" %>"><%= dueLabel(l.next_followup) %></span>
+            <% } else { %><span class="sub">—</span><% } %>
+          </td>
+          <td class="sub nowrap" title="<%= fmtDateTime(l.created_at) %>"><%= ago(l.created_at) %></td>
+          <td class="col-actions">
+            <div class="row-actions">
+              <% if (waNumber(l.phone)) { %>
+              <a class="btn btn--ghost btn--icon" title="WhatsApp <%= l.phone %>" aria-label="WhatsApp this lead"
+                 href="https://wa.me/<%= waNumber(l.phone) %>" target="_blank" rel="noopener"><%- icon("chat") %></a>
+              <% } %>
+              <a class="btn btn--ghost btn--sm" href="/admin/leads/<%= l.id %>">Open<%- icon("arrow") %></a>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if (pages > 1) { %>
+  <div class="pager">
+    <span class="muted">Page <%= page %> of <%= pages %></span>
+    <span class="spacer"></span>
+    <% if (page > 1) { %><a class="btn btn--ghost btn--sm" href="<%= qs({ page: page - 1 }) %>">Previous</a><% } %>
+    <% if (page < pages) { %><a class="btn btn--ghost btn--sm" href="<%= qs({ page: page + 1 }) %>">Next</a><% } %>
+  </div>
+  <% } %>
+
+  <% } else { %>
+  <div class="empty">
+    <%- icon("users") %>
+    <h3><%= allCount ? "No leads match this filter" : "No leads yet" %></h3>
+    <p>
+      <% if (allCount) { %>
+        Try clearing the search or picking a different status tab.
+      <% } else { %>
+        Website contact-form enquiries arrive here automatically. You can also add leads by hand.
+      <% } %>
+    </p>
+    <% if (allCount) { %>
+      <a class="btn btn--ghost" href="/admin/leads">Clear all filters</a>
+    <% } else { %>
+      <a class="btn" href="/admin/leads/new"><%- icon("plus") %>Add a lead</a>
+    <% } %>
+  </div>
+  <% } %>
+</div>
+
+<%- include("_foot") %>

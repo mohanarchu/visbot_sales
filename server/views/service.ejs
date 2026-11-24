@@ -1,0 +1,160 @@
+<%- include("partials/head", { title: "Service & Support — Visbot Industries", desc: "Request service for your Visbot uPVC machine — raise a service request with your invoice or purchase number and our Coimbatore service team will get back to you.", active: "service", WA }) %>
+
+<section class="page-banner">
+  <div class="wrap">
+    <span class="eyebrow">Already own a Visbot machine?</span>
+    <h1>Service &amp; Support</h1>
+    <p>Raise a service request and our Coimbatore service team will call you back. Keep your invoice or purchase order number handy — it lets us pull up your machine, its configuration and its warranty straight away.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="contact-grid">
+      <div>
+        <h2>Raise a service request</h2>
+        <p class="form-note">Fill this in and we will get back to you with a service slot. For a machine that has stopped production, call <b><a href="tel:<%= dial(svc.service_helpline) %>"><%= svc.service_helpline %></a></b> directly as well.</p>
+
+        <form class="service" data-helpline="<%= svc.service_helpline %>">
+          <label for="s-name"><span class="lbl">Your name <span class="req">*</span></span>
+            <input id="s-name" name="name" type="text" required autocomplete="name">
+          </label>
+          <label for="s-phone"><span class="lbl">Phone number <span class="req">*</span></span>
+            <input id="s-phone" name="phone" type="tel" required autocomplete="tel">
+          </label>
+          <label for="s-state"><span class="lbl">State <span class="req">*</span></span>
+            <input id="s-state" name="state" type="text" required placeholder="e.g. Tamil Nadu">
+          </label>
+          <label for="s-ref"><span class="lbl">Invoice or purchase order number <span class="req">*</span></span>
+            <input id="s-ref" name="reference" type="text" required placeholder="As printed on your Visbot invoice">
+          </label>
+          <label for="s-machine"><span class="lbl">Which machine needs service? <span class="opt">optional</span></span>
+            <select id="s-machine" name="machine">
+              <option value="">— select a machine —</option>
+              <% products.forEach((p) => { %>
+              <option><%= p.name %></option>
+              <% }) %>
+              <option>Spares &amp; Tools</option>
+              <option>Other / Not listed</option>
+            </select>
+          </label>
+          <label for="s-issue"><span class="lbl">What is the problem? <span class="opt">optional</span></span>
+            <textarea id="s-issue" name="issue" rows="4" placeholder="Describe the fault, any error shown, and when it started"></textarea>
+          </label>
+          <button class="btn" type="submit">Submit service request</button>
+        </form>
+
+        <p class="form-note" style="margin-top:1rem;">Prefer email? Write to <b>visbotindustries@gmail.com</b> with your invoice number in the subject line.</p>
+      </div>
+
+      <div style="display:grid; gap:1.2rem; align-content:start;">
+        <div class="addr-card">
+          <h3>Service helpline</h3>
+          <p><b><a href="tel:<%= dial(svc.service_helpline) %>"><%= svc.service_helpline %></a></b> &middot; service &amp; support</p>
+          <% if (svc.service_technical) { %>
+          <p><b><a href="tel:<%= dial(svc.service_technical) %>"><%= svc.service_technical %></a></b> &middot; technical support</p>
+          <% } %>
+          <% if (svc.service_hours) { %>
+          <p><%= svc.service_hours %></p>
+          <% } %>
+        </div>
+        <div class="addr-card">
+          <h3>What to have ready</h3>
+          <p>Your invoice or purchase order number, the machine name, and a photo or short video of the fault. It usually lets our engineer diagnose the problem on the first call.</p>
+        </div>
+        <div class="addr-card">
+          <h3>Bring it to the factory</h3>
+          <p>SF.No. 647 &amp; 648, Pollachi Main Road,<br>opposite Hemambigai Mahal, Eachanari,<br>Coimbatore, Tamil Nadu 641021</p>
+          <p><a href="https://maps.google.com/?q=Visbot+Industries+Eachanari+Coimbatore" target="_blank" rel="noopener">Open in Google Maps &rarr;</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <span class="eyebrow">How it works</span>
+    <h2>From your request to a running machine</h2>
+    <div class="grid cols-4" style="margin-top:1.5rem;">
+      <div class="step">
+        <span class="num">1</span>
+        <h3>You raise the request</h3>
+        <p>Your invoice number tells us exactly which machine you have and whether it is still in warranty.</p>
+      </div>
+      <div class="step">
+        <span class="num">2</span>
+        <h3>We call you back</h3>
+        <p>An engineer calls to understand the fault and, where possible, talks your operator through the fix on the spot.</p>
+      </div>
+      <div class="step">
+        <span class="num">3</span>
+        <h3>Parts or a visit</h3>
+        <p>If a spare is needed we dispatch it from Coimbatore. For bigger faults we schedule an on-site visit.</p>
+      </div>
+      <div class="step">
+        <span class="num">4</span>
+        <h3>Back in production</h3>
+        <p>We confirm the machine is running to spec before the request is closed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<% if (reviews.length) { %>
+<%# Reviews are published from the admin panel. There is no form here: the page
+    only shows what has been approved. %>
+<section class="section">
+  <div class="wrap">
+    <span class="eyebrow">What our customers say</span>
+    <h2>Service in our customers' words</h2>
+    <p class="rev-avg">
+      <span class="stars" aria-hidden="true"><%= "★".repeat(Math.round(avg)) %><%= "☆".repeat(5 - Math.round(avg)) %></span>
+      <b><%= avg %> out of 5</b> from <%= reviews.length %> <%= reviews.length === 1 ? "review" : "reviews" %> of our service
+    </p>
+    <div class="rev-grid">
+      <% reviews.forEach((r) => { %>
+      <figure class="rev-card">
+        <div class="stars" aria-label="<%= r.rating %> out of 5"><%= "★".repeat(r.rating) %><span class="dim"><%= "★".repeat(5 - r.rating) %></span></div>
+        <% if (r.comment) { %><blockquote><%= r.comment %></blockquote><% } %>
+        <figcaption>
+          <b><%= r.customer %></b>
+          <% if (r.company) { %><span><%= r.company %></span><% } -%>
+          <%# The location line is skipped entirely when nothing was filled in. -%>
+          <% const place = [[r.city, r.state].filter(Boolean).join(", "), r.machine].filter(Boolean).join(" · "); -%>
+          <% if (place) { %><span><%= place %></span><% } -%>
+        </figcaption>
+      </figure>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<%# Keeps the light/shaded bands alternating whether or not reviews are shown. %>
+<section class="section<%= reviews.length ? " alt" : "" %>">
+  <div class="wrap">
+    <span class="eyebrow">Service questions</span>
+    <h2>Frequently asked</h2>
+    <div class="faq" style="margin-top:1.5rem;">
+      <details>
+        <summary>I cannot find my invoice number. Can I still raise a request?</summary>
+        <p class="a">Yes — put your company name and the approximate month of purchase in the problem description instead, and we will trace the invoice from our records. The number simply speeds things up.</p>
+      </details>
+      <details>
+        <summary>Is service free?</summary>
+        <p class="a">Machines in warranty are covered for manufacturing defects. Outside warranty, and for consumables such as Teflon sheets, heater plates and router bits, parts and labour are chargeable — we will tell you the cost before any work starts.</p>
+      </details>
+      <details>
+        <summary>Do you service machines from other brands?</summary>
+        <p class="a">We supply spares that fit most uPVC machinery, and we can often help with tooling and consumables. For a full repair of another brand's machine, send us the details and we will tell you honestly whether we can take it on.</p>
+      </details>
+      <details>
+        <summary>How quickly will someone respond?</summary>
+        <p class="a">We aim to call back the same working day for requests raised before 4 pm. If your line has stopped completely, call the helpline directly rather than waiting for a callback.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<%- include("partials/footer", { WA }) %>

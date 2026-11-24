@@ -1,0 +1,54 @@
+<%- include("partials/head", { title: "Products — Visbot Industries", desc: "uPVC window making machines by Visbot Industries — welding, cutting, copy router, finishing machines and air compressors with real photos, prices and technical specifications.", active: "products", WA }) %>
+
+<section class="page-banner">
+  <div class="wrap">
+    <span class="eyebrow">Product Range</span>
+    <h1>uPVC Window Making Machines</h1>
+    <p>Every machine is engineered and assembled at our Coimbatore factory. Prices are indicative ex-factory rates — contact us for a current quotation, and watch demo videos of each machine on our <a href="https://www.youtube.com/@visbotindustries3017" target="_blank" rel="noopener">YouTube channel</a>.</p>
+  </div>
+</section>
+
+<% cats.forEach((c, i) => { const items = byCat[c.id] || []; if (!items.length) return; %>
+<section class="section<%= i % 2 ? " alt" : "" %>" id="<%= c.slug %>">
+  <div class="wrap">
+    <div class="cat-head"><h2><%= c.name %></h2><span class="count"><%= items.length %> <%= c.count_label %></span></div>
+    <div class="grid cols-<%= c.cols %>">
+      <% items.forEach((p) => { const href = "/product/" + (p.detail_slug || p.slug) + ".html"; %>
+      <div class="product">
+        <% if (p.image) { %>
+        <a class="photo" href="<%= href %>"><img src="/assets/products/<%= p.image %>" alt="<%= p.name %>"></a>
+        <% } else { %>
+        <div class="ph">Photo on request</div>
+        <% } %>
+        <div class="body">
+          <h3><a href="<%= href %>"><%= p.name %></a></h3>
+          <span class="price"><%= p.price %><% if (p.price_note) { %> <small><%= p.price_note %></small><% } %></span>
+          <% if (p.card_desc) { %><p class="desc"><%= p.card_desc %></p><% } %>
+          <a class="detail-link" href="<%= href %>">Full specs &amp; details &rarr;</a>
+          <a class="enquire" href="<%= enquireLink(p.name) %>">Enquire &rarr;</a>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+</section>
+<% }) %>
+
+<section class="section alt">
+  <div class="wrap">
+    <div class="setup-banner">
+      <div>
+        <span class="eyebrow">Best value</span>
+        <h2>Complete uPVC Window Making Setup</h2>
+        <p>Cutting, welding, routing and cleaning — the full machine line for a new window factory, with operator training and installation support included as options.</p>
+      </div>
+      <div>
+        <div class="price-tag"><small>Full setup from</small>&#8377;3,00,000</div>
+        <p style="margin-top:1rem;"><a class="btn" href="<%= enquireLink("Complete Window Factory Setup") %>">Enquire Now</a></p>
+      </div>
+    </div>
+    <p class="form-note" style="margin-top:1.5rem;">Prices shown are indicative ex-factory rates (Coimbatore) and may change with specification and material costs. GST, transport, installation and training are quoted separately. Specifications are typical values from the Visbot product catalog; confirm the current configuration on enquiry.</p>
+  </div>
+</section>
+
+<%- include("partials/footer", { WA }) %>

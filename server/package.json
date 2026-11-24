@@ -1,0 +1,23 @@
+{
+  "name": "visbot-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Visbot Industries website, backend API and admin panel (Express + PostgreSQL)",
+  "main": "bin/all.js",
+  "scripts": {
+    "start": "node bin/all.js",
+    "start:website": "node bin/website.js",
+    "start:backend": "node bin/backend.js",
+    "start:admin": "node bin/admin.js",
+    "seed": "node seed.js",
+    "migrate": "psql -d $PGDATABASE -f schema.sql -f schema-leads.sql -f schema-meta.sql -f schema-service.sql -f schema-users.sql -f schema-states.sql"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.12.0"
+  }
+}

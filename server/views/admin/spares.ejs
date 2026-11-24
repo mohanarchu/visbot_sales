@@ -1,0 +1,76 @@
+<%- include("_head", { title: "Spares", subtitle: total + " spares in " + groups.length + " groups on the Spares page", nav: "spares" }) %>
+
+<div class="toolbar">
+  <a class="btn btn--ghost" href="/admin/spare-groups/new"><%- icon("plus") %>New group</a>
+  <a class="btn spacer" href="/admin/spares/new"><%- icon("plus") %>New spare</a>
+</div>
+
+<% groups.forEach((g) => { const items = byGroup[g.id] || []; %>
+<section class="panel">
+  <div class="panel-head">
+    <h2><%= g.name %></h2>
+    <span class="chip chip--muted"><%= items.length %></span>
+    <div class="right">
+      <a class="btn btn--ghost btn--sm" href="/admin/spares/new?group=<%= g.id %>"><%- icon("plus") %>Add spare</a>
+      <a class="btn btn--ghost btn--sm" href="/admin/spare-groups/<%= g.id %>/edit"><%- icon("pencil") %>Group</a>
+      <form method="post" action="/admin/spare-groups/<%= g.id %>/delete"
+            data-confirm="Delete the group &quot;<%= g.name %>&quot; and all <%= items.length %> spare(s) inside it?">
+        <button class="btn btn--danger btn--icon" type="submit" title="Delete group" aria-label="Delete group"><%- icon("trash") %></button>
+      </form>
+    </div>
+  </div>
+
+  <% if (items.length) { %>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr><th>Photo</th><th>Spare</th><th>Description</th><th class="col-actions">Actions</th></tr>
+      </thead>
+      <tbody>
+        <% items.forEach((s) => { %>
+        <tr>
+          <td>
+            <% if (s.image) { %>
+              <img class="thumb" src="/assets/products/<%= s.image %>" alt="">
+            <% } else { %>
+              <span class="thumb thumb--empty" title="No photo"><%- icon("image") %></span>
+            <% } %>
+          </td>
+          <td><span class="name"><%= s.name %></span></td>
+          <td class="sub"><%= s.description || "—" %></td>
+          <td class="col-actions">
+            <div class="row-actions">
+              <a class="btn btn--ghost btn--sm" href="/admin/spares/<%= s.id %>/edit"><%- icon("pencil") %>Edit</a>
+              <form method="post" action="/admin/spares/<%= s.id %>/delete" data-confirm="Delete the spare &quot;<%= s.name %>&quot;?">
+                <button class="btn btn--danger btn--icon" type="submit" title="Delete" aria-label="Delete"><%- icon("trash") %></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } else { %>
+  <div class="empty">
+    <%- icon("wrench") %>
+    <h3>No spares in this group</h3>
+    <p>This group is hidden from the Spares page until it has at least one item.</p>
+    <a class="btn" href="/admin/spares/new?group=<%= g.id %>"><%- icon("plus") %>Add a spare</a>
+  </div>
+  <% } %>
+</section>
+<% }) %>
+
+<% if (!groups.length) { %>
+<div class="panel">
+  <div class="empty">
+    <%- icon("wrench") %>
+    <h3>No spare groups</h3>
+    <p>Groups become the section headings on the Spares page.</p>
+    <a class="btn" href="/admin/spare-groups/new"><%- icon("plus") %>New group</a>
+  </div>
+</div>
+<% } %>
+
+<%- include("_foot") %>

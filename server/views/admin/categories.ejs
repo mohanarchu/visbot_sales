@@ -1,0 +1,48 @@
+<%- include("_head", { title: "Categories", subtitle: "Sections on the Products page, in display order", nav: "categories" }) %>
+
+<div class="toolbar">
+  <div class="search">
+    <%- icon("search") %>
+    <input type="search" placeholder="Search categories…" data-table="#tbl-categories" aria-label="Search categories">
+  </div>
+  <span class="count" id="count-categories"></span>
+  <a class="btn spacer" href="/admin/categories/new"><%- icon("plus") %>New category</a>
+</div>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table class="data" id="tbl-categories" data-filterable data-count-into="#count-categories" data-empty-into="#empty-categories">
+      <thead>
+        <tr><th>#</th><th>Category</th><th>Section anchor</th><th>Products</th><th>Grid</th><th class="col-actions">Actions</th></tr>
+      </thead>
+      <tbody>
+        <% cats.forEach((c) => { %>
+        <tr>
+          <td class="num"><%= c.sort_order %></td>
+          <td><span class="name"><%= c.name %></span></td>
+          <td><a class="sub" href="/products.html#<%= c.slug %>" target="_blank" rel="noopener">#<%= c.slug %></a></td>
+          <td><span class="chip chip--info"><%= c.product_count %> <%= c.count_label %></span></td>
+          <td class="sub"><%= c.cols %> columns</td>
+          <td class="col-actions">
+            <div class="row-actions">
+              <a class="btn btn--ghost btn--sm" href="/admin/categories/<%= c.id %>/edit"><%- icon("pencil") %>Edit</a>
+              <form method="post" action="/admin/categories/<%= c.id %>/delete"
+                    data-confirm="Delete the category &quot;<%= c.name %>&quot;? Its <%= c.product_count %> product(s) will stay but become uncategorised and drop off the Products page.">
+                <button class="btn btn--danger btn--icon" type="submit" title="Delete" aria-label="Delete"><%- icon("trash") %></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <div class="empty" id="empty-categories" <%= cats.length ? "hidden" : "" %>>
+    <%- icon("layers") %>
+    <h3>No categories</h3>
+    <p>Categories group the machines into sections on the Products page.</p>
+    <a class="btn" href="/admin/categories/new"><%- icon("plus") %>New category</a>
+  </div>
+</div>
+
+<%- include("_foot") %>

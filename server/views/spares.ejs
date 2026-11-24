@@ -1,0 +1,36 @@
+<%- include("partials/head", { title: "Spares — Visbot Industries", desc: "Spare parts and tools for uPVC window machinery — heater plates, Teflon sheets, router bits, templates and corner cleaning tools, shipped from Coimbatore.", active: "spares", WA }) %>
+
+<section class="page-banner">
+  <div class="wrap">
+    <span class="eyebrow">Keep your line running</span>
+    <h1>Spares &amp; Consumables</h1>
+    <p>Genuine spares for Visbot machines — and compatible tools for most uPVC machinery — stocked and shipped fast from Coimbatore, so a worn part never stops your production.</p>
+  </div>
+</section>
+
+<% groups.forEach((g, i) => { const items = byGroup[g.id] || []; if (!items.length) return; %>
+<section class="section<%= i % 2 ? " alt" : "" %>">
+  <div class="wrap">
+    <div class="cat-head"><h2><%= g.name %></h2></div>
+    <div class="grid cols-4">
+      <% items.forEach((s) => {
+        const enq = enquireLink(s.name);
+      %>
+      <div class="product">
+        <% if (s.image) { %><div class="photo"><img src="/assets/products/<%= s.image %>" alt="<%= s.name %>"></div><% } else { %><div class="ph">Photo on request</div><% } %>
+        <div class="body">
+          <h3><%= s.name %></h3>
+          <% if (s.description) { %><p class="desc"><%= s.description %></p><% } %>
+          <a class="enquire" href="<%= enq %>">Enquire &rarr;</a>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+    <% if (i === groups.length - 1) { %>
+    <p class="form-note" style="margin-top:1.5rem;">Need a spare that isn't listed? Send us a photo of the part on WhatsApp — we supply spares for most uPVC machinery brands.</p>
+    <% } %>
+  </div>
+</section>
+<% }) %>
+
+<%- include("partials/footer", { WA }) %>

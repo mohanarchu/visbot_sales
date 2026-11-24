@@ -1,0 +1,26 @@
+[Unit]
+Description=Visbot backend API (port 9001)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/visbot/server
+ExecStart=/usr/bin/node bin/backend.js
+Environment=NODE_ENV=production
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=visbot-backend
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

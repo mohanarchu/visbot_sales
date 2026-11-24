@@ -1,0 +1,54 @@
+<%- include("_head", { title: "Addresses & locations", subtitle: "The address cards on the Contact page", nav: "locations" }) %>
+
+<div class="toolbar">
+  <div class="search">
+    <%- icon("search") %>
+    <input type="search" placeholder="Search locations…" data-table="#tbl-locations" aria-label="Search locations">
+  </div>
+  <span class="count" id="count-locations"></span>
+  <a class="btn spacer" href="/admin/locations/new"><%- icon("plus") %>New location</a>
+</div>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table class="data" id="tbl-locations" data-filterable data-count-into="#count-locations" data-empty-into="#empty-locations">
+      <thead>
+        <tr><th>#</th><th>Title</th><th>Address</th><th>Phone numbers</th><th>Map</th><th class="col-actions">Actions</th></tr>
+      </thead>
+      <tbody>
+        <% locations.forEach((l) => { %>
+        <tr>
+          <td class="num"><%= l.sort_order %></td>
+          <td><span class="name"><%= l.title %></span></td>
+          <td class="sub" style="white-space:pre-line; min-width:220px;"><%= l.address || "—" %></td>
+          <td class="sub" style="min-width:200px;">
+            <% (l.phones || []).forEach((ph) => { %>
+              <div><b style="color:var(--ink-700)"><%= ph.number %></b><% if (ph.label) { %> · <%= ph.label %><% } %></div>
+            <% }) %>
+            <% if (!(l.phones || []).length) { %>—<% } %>
+          </td>
+          <td>
+            <% if (l.map_url) { %><span class="chip chip--ok">Linked</span><% } else { %><span class="chip chip--muted">None</span><% } %>
+          </td>
+          <td class="col-actions">
+            <div class="row-actions">
+              <a class="btn btn--ghost btn--sm" href="/admin/locations/<%= l.id %>/edit"><%- icon("pencil") %>Edit</a>
+              <form method="post" action="/admin/locations/<%= l.id %>/delete" data-confirm="Delete the location &quot;<%= l.title %>&quot;?">
+                <button class="btn btn--danger btn--icon" type="submit" title="Delete" aria-label="Delete"><%- icon("trash") %></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <div class="empty" id="empty-locations" <%= locations.length ? "hidden" : "" %>>
+    <%- icon("pin") %>
+    <h3>No locations</h3>
+    <p>Add the factory, experience center or proprietor card shown on the Contact page.</p>
+    <a class="btn" href="/admin/locations/new"><%- icon("plus") %>New location</a>
+  </div>
+</div>
+
+<%- include("_foot") %>

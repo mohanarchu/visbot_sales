@@ -1,0 +1,159 @@
+<%- include("_head", {
+  title: p ? p.name : "New product",
+  subtitle: p ? "Editing product · /product/" + (p.detail_slug || p.slug) + ".html" : "Adds a card to the Products page and its own detail page",
+  nav: "products",
+  back: "/admin/products"
+}) %>
+
+<form class="panel" method="post" action="/admin/products<%= p ? "/" + p.id : "" %>" enctype="multipart/form-data" <%= p ? "" : "data-new" %>>
+
+  <section class="form-section">
+    <header>
+      <h3>Basics</h3>
+      <p>The name and price shown on the product card and the detail page banner.</p>
+    </header>
+    <div class="stack">
+      <div class="grid-2">
+        <label class="field">
+          <span class="lbl">Product name</span>
+          <input type="text" name="name" required value="<%= p ? p.name : "" %>" placeholder="e.g. Single Head Welding Machine">
+        </label>
+        <label class="field">
+          <span class="lbl">Page address <span class="hint">/product/&lt;slug&gt;.html</span></span>
+          <input type="text" name="slug" required pattern="[a-z0-9-]+" value="<%= p ? p.slug : "" %>" placeholder="single-head-welding-machine">
+        </label>
+      </div>
+      <div class="grid-3">
+        <label class="field">
+          <span class="lbl">Category</span>
+          <select name="category_id">
+            <option value="">— none —</option>
+            <% cats.forEach((c) => { %>
+            <option value="<%= c.id %>" <%= (p && p.category_id === c.id) || (!p && presetCategory == c.id) ? "selected" : "" %>><%= c.name %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Price <span class="hint">₹23,000 or "Price on request"</span></span>
+          <input type="text" name="price" value="<%= p ? p.price : "" %>" placeholder="₹1,45,000">
+        </label>
+        <label class="field">
+          <span class="lbl">Price suffix <span class="hint">optional</span></span>
+          <input type="text" name="price_note" value="<%= p && p.price_note ? p.price_note : "" %>" placeholder="onwards">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Photo</h3>
+      <p>Choose a photo already in the library, or upload a new one — an upload replaces the selection.</p>
+    </header>
+    <div class="img-pick" data-img-pick>
+      <div class="img-prev-box">
+        <img src="<%= p && p.image ? "/assets/products/" + p.image : "" %>" alt="" <%= p && p.image ? "" : "hidden" %>>
+        <span class="ph" <%= p && p.image ? "hidden" : "" %>><%- icon("image") %>No photo</span>
+      </div>
+      <div class="stack">
+        <label class="field">
+          <span class="lbl">Photo library</span>
+          <select name="image">
+            <option value="">— no photo —</option>
+            <% images.forEach((img) => { %>
+            <option value="<%= img %>" <%= p && p.image === img ? "selected" : "" %>><%= img %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Upload a new photo <span class="hint">JPG, PNG or WebP · max 8 MB</span></span>
+          <input type="file" name="image_file" accept="image/*">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Descriptions</h3>
+      <p>Short text for the card, and the longer copy used on the detail page.</p>
+    </header>
+    <div class="stack">
+      <label class="field">
+        <span class="lbl">Card description <span class="hint">one line under the price on the Products page</span></span>
+        <input type="text" name="card_desc" value="<%= p && p.card_desc ? p.card_desc : "" %>" placeholder="Pneumatic single head welder with PLC control.">
+      </label>
+      <label class="field">
+        <span class="lbl">Tagline <span class="hint">sits under the title in the detail page banner</span></span>
+        <input type="text" name="tag" value="<%= p && p.tag ? p.tag : "" %>">
+      </label>
+      <label class="field">
+        <span class="lbl">Overview <span class="hint">the "About this machine" paragraph</span></span>
+        <textarea name="intro" rows="5"><%= p && p.intro ? p.intro : "" %></textarea>
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Key features</h3>
+      <p>One feature per line. Wrap the lead-in in &lt;b&gt;…&lt;/b&gt; for a bold label, e.g. <code>&lt;b&gt;PLC control:&lt;/b&gt; stable performance.</code></p>
+    </header>
+    <label class="field field--mono">
+      <textarea name="features" rows="9" data-count="feature"><%= p && p.features ? p.features.join("\n") : "" %></textarea>
+    </label>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Technical specifications</h3>
+      <p>Each row becomes a line in the specifications table on the detail page.</p>
+    </header>
+    <div class="stack">
+      <div class="field">
+        <textarea name="specs" rows="8" data-pairs data-key-placeholder="Parameter" data-value-placeholder="Value"><%= p && p.specs ? p.specs.map((r) => (r[1] ? r[0] + " | " + r[1] : r[0])).join("\n") : "" %></textarea>
+      </div>
+      <div class="grid-2">
+        <label class="field">
+          <span class="lbl">Table heading <span class="hint">default: Technical parameters</span></span>
+          <input type="text" name="spec_title" value="<%= p && p.spec_title ? p.spec_title : "" %>" placeholder="Technical parameters">
+        </label>
+        <label class="field">
+          <span class="lbl">Note below the table <span class="hint">optional</span></span>
+          <input type="text" name="note" value="<%= p && p.note ? p.note : "" %>">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Placement</h3>
+      <p>Controls where this product appears and in what order.</p>
+    </header>
+    <div class="grid-3">
+      <label class="switch">
+        <input type="checkbox" name="show_in_grid" <%= !p || p.show_in_grid ? "checked" : "" %>>
+        Show a card on the Products page
+      </label>
+      <label class="field">
+        <span class="lbl">Card links to another page <span class="hint">slug, e.g. air-compressors</span></span>
+        <input type="text" name="detail_slug" value="<%= p && p.detail_slug ? p.detail_slug : "" %>">
+      </label>
+      <label class="field">
+        <span class="lbl">Sort order <span class="hint">lower numbers first</span></span>
+        <input type="number" name="sort_order" value="<%= p ? p.sort_order : 0 %>">
+      </label>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <button class="btn" type="submit"><%- icon("check") %><%= p ? "Save changes" : "Create product" %></button>
+    <a class="btn btn--ghost" href="/admin/products">Cancel</a>
+    <% if (p) { %>
+    <a class="btn btn--ghost spacer" href="/product/<%= p.detail_slug || p.slug %>.html" target="_blank" rel="noopener"><%- icon("external") %>View page</a>
+    <% } %>
+  </div>
+</form>
+
+<%- include("_foot") %>

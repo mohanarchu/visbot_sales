@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title><%= title %></title>
+<meta name="description" content="<%= desc %>">
+<link rel="icon" href="/assets/logo-mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/index.html">
+      <img src="/assets/logo-mark.png" alt="Visbot Industries logo">
+      <span class="brand-name">VISBOT <span>INDUSTRIES</span></span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-label="Open menu">&#9776;</button>
+    <nav class="nav">
+      <a href="/index.html">Home</a>
+      <a href="/products.html"<%= active === "products" ? ' class="active"' : "" %>>Products</a>
+      <a href="/spares.html"<%= active === "spares" ? ' class="active"' : "" %>>Spares</a>
+      <a href="/service.html"<%= active === "service" ? ' class="active"' : "" %>>Service</a>
+      <a href="/about.html">About</a>
+      <a href="/contact.html"<%= active === "contact" ? ' class="active"' : "" %>>Contact</a>
+      <a class="btn" href="https://wa.me/<%= WA %>" target="_blank" rel="noopener">WhatsApp Us</a>
+    </nav>
+  </div>
+</header>

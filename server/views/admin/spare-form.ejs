@@ -1,0 +1,75 @@
+<%- include("_head", {
+  title: s ? s.name : "New spare",
+  subtitle: s ? "Editing spare" : "Adds a card to the Spares page",
+  nav: "spares",
+  back: "/admin/spares"
+}) %>
+
+<form class="panel" method="post" action="/admin/spares<%= s ? "/" + s.id : "" %>" enctype="multipart/form-data">
+  <section class="form-section">
+    <header>
+      <h3>Spare details</h3>
+      <p>The name, group and short description shown on the card.</p>
+    </header>
+    <div class="stack">
+      <div class="grid-2">
+        <label class="field">
+          <span class="lbl">Name</span>
+          <input type="text" name="name" required value="<%= s ? s.name : "" %>" placeholder="e.g. Copy Router Bits">
+        </label>
+        <label class="field">
+          <span class="lbl">Group</span>
+          <select name="group_id" required>
+            <% groups.forEach((g) => { %>
+            <option value="<%= g.id %>" <%= (s && s.group_id === g.id) || (!s && presetGroup == g.id) ? "selected" : "" %>><%= g.name %></option>
+            <% }) %>
+          </select>
+        </label>
+      </div>
+      <label class="field">
+        <span class="lbl">Description <span class="hint">one short line on the card</span></span>
+        <input type="text" name="description" value="<%= s && s.description ? s.description : "" %>">
+      </label>
+      <label class="field" style="max-width:220px;">
+        <span class="lbl">Sort order <span class="hint">within the group</span></span>
+        <input type="number" name="sort_order" value="<%= s ? s.sort_order : 0 %>">
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Photo</h3>
+      <p>Cards without a photo show a "Photo on request" placeholder on the website.</p>
+    </header>
+    <div class="img-pick" data-img-pick>
+      <div class="img-prev-box">
+        <img src="<%= s && s.image ? "/assets/products/" + s.image : "" %>" alt="" <%= s && s.image ? "" : "hidden" %>>
+        <span class="ph" <%= s && s.image ? "hidden" : "" %>><%- icon("image") %>No photo</span>
+      </div>
+      <div class="stack">
+        <label class="field">
+          <span class="lbl">Photo library</span>
+          <select name="image">
+            <option value="">— no photo —</option>
+            <% images.forEach((img) => { %>
+            <option value="<%= img %>" <%= s && s.image === img ? "selected" : "" %>><%= img %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Upload a new photo <span class="hint">JPG, PNG or WebP · max 8 MB</span></span>
+          <input type="file" name="image_file" accept="image/*">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <button class="btn" type="submit"><%- icon("check") %><%= s ? "Save changes" : "Create spare" %></button>
+    <a class="btn btn--ghost" href="/admin/spares">Cancel</a>
+    <a class="btn btn--ghost spacer" href="/spares.html" target="_blank" rel="noopener"><%- icon("external") %>View Spares page</a>
+  </div>
+</form>
+
+<%- include("_foot") %>

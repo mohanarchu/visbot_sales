@@ -1,0 +1,84 @@
+<%
+  const _sub  = (typeof subtitle !== "undefined" && subtitle) ? subtitle : "";
+  const _back = (typeof back !== "undefined" && back) ? back : null;
+  const _flash = (typeof flash !== "undefined" && flash) ? flash : null;
+  const NAV = [
+    { group: "Leads", items: [
+      { key: "dashboard", href: "/admin",           label: "Dashboard",  icon: "grid" },
+      { key: "leads",     href: "/admin/leads",     label: "All leads",  icon: "users" },
+      { key: "lead-new",  href: "/admin/leads/new", label: "Add a lead", icon: "plus" },
+    ]},
+    { group: "Integrations", items: [
+      { key: "meta", href: "/admin/integrations/meta", label: "Meta lead ads", icon: "spark" },
+    ]},
+    { group: "Website", items: [
+      { key: "website",    href: "/admin/website",    label: "Overview",             icon: "globe" },
+      { key: "categories", href: "/admin/categories", label: "Product categories",   icon: "layers" },
+      { key: "products",   href: "/admin/products",   label: "Products",             icon: "box" },
+      { key: "spares",     href: "/admin/spares",     label: "Spares",               icon: "wrench" },
+      { key: "locations",  href: "/admin/locations",  label: "Addresses & locations", icon: "pin" },
+      { key: "regions",    href: "/admin/regions",    label: "Regional contacts",     icon: "phone" },
+    ]},
+  ];
+%><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= title %> — Visbot Admin</title>
+<link rel="icon" href="/assets/logo-mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="sidebar" id="sidebar">
+  <a class="brand" href="/admin">
+    <img src="/assets/logo-mark.png" alt="">
+    <span>
+      <span class="bn">VISBOT <i>ADMIN</i></span>
+      <span class="bs">Lead management</span>
+    </span>
+  </a>
+
+  <nav class="side-nav">
+    <% NAV.forEach((section) => { %>
+      <div class="side-label"><%= section.group %></div>
+      <% section.items.forEach((it) => { %>
+        <a href="<%= it.href %>" class="<%= nav === it.key ? "active" : "" %>"><%- icon(it.icon) %><%= it.label %></a>
+      <% }) %>
+    <% }) %>
+  </nav>
+
+  <div class="side-foot">
+    <a href="/index.html" target="_blank" rel="noopener"><%- icon("external") %>View live site</a>
+    <form method="post" action="/admin/logout">
+      <button type="submit"><%- icon("logout") %>Log out</button>
+    </form>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <button class="burger" id="burger" aria-label="Open menu"><%- icon("menu") %></button>
+    <% if (_back) { %><a class="back" href="<%= _back %>"><%- icon("back") %>Back</a><% } %>
+    <div>
+      <h1><%= title %></h1>
+      <% if (_sub) { %><div class="sub"><%= _sub %></div><% } %>
+    </div>
+    <div class="right">
+      <a class="btn btn--ghost btn--sm" href="/index.html" target="_blank" rel="noopener"><%- icon("external") %>View site</a>
+    </div>
+  </header>
+
+  <div class="content">
+    <% if (_flash) { %>
+    <div class="flash <%= _flash.type === "err" ? "flash--err" : "" %>" role="status">
+      <%- icon(_flash.type === "err" ? "alert" : "check") %>
+      <span><%= _flash.text %></span>
+      <button type="button" aria-label="Dismiss"><%- icon("close") %></button>
+    </div>
+    <% } %>

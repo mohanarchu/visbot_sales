@@ -1,0 +1,32 @@
+<%- include("_head", {
+  title: g ? g.name : "New spare group",
+  subtitle: g ? "Editing group" : "Adds a new section heading to the Spares page",
+  nav: "spares",
+  back: "/admin/spares"
+}) %>
+
+<form class="panel" method="post" action="/admin/spare-groups<%= g ? "/" + g.id : "" %>">
+  <section class="form-section">
+    <header>
+      <h3>Group</h3>
+      <p>Groups are the section headings that spares are listed under.</p>
+    </header>
+    <div class="grid-2">
+      <label class="field">
+        <span class="lbl">Group name</span>
+        <input type="text" name="name" required value="<%= g ? g.name : "" %>" placeholder="e.g. Corner Cleaning Tools">
+      </label>
+      <label class="field">
+        <span class="lbl">Sort order <span class="hint">lower numbers first</span></span>
+        <input type="number" name="sort_order" value="<%= g ? g.sort_order : 0 %>">
+      </label>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <button class="btn" type="submit"><%- icon("check") %><%= g ? "Save changes" : "Create group" %></button>
+    <a class="btn btn--ghost" href="/admin/spares">Cancel</a>
+  </div>
+</form>
+
+<%- include("_foot") %>

@@ -1,0 +1,39 @@
+<%- include("_head", {
+  title: r ? r.region : "New regional contact",
+  subtitle: r ? "Editing contact table row" : "Adds a row to the state-wise contact table",
+  nav: "regions",
+  back: "/admin/regions"
+}) %>
+
+<form class="panel" method="post" action="/admin/regions<%= r ? "/" + r.id : "" %>">
+  <section class="form-section">
+    <header>
+      <h3>Contact row</h3>
+      <p>These rows make up the "Your regional contact" table on the Contact page.</p>
+    </header>
+    <div class="stack">
+      <div class="grid-2">
+        <label class="field">
+          <span class="lbl">Region</span>
+          <input type="text" name="region" required value="<%= r ? r.region : "" %>" placeholder="e.g. Tamil Nadu (Head Office)">
+        </label>
+        <label class="field">
+          <span class="lbl">Phone</span>
+          <input type="text" name="phone" required value="<%= r ? r.phone : "" %>" placeholder="+91 80723 98966">
+        </label>
+      </div>
+      <label class="field" style="max-width:220px;">
+        <span class="lbl">Sort order <span class="hint">lower numbers first</span></span>
+        <input type="number" name="sort_order" value="<%= r ? r.sort_order : 0 %>">
+      </label>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <button class="btn" type="submit"><%- icon("check") %><%= r ? "Save changes" : "Add contact" %></button>
+    <a class="btn btn--ghost" href="/admin/regions">Cancel</a>
+    <a class="btn btn--ghost spacer" href="/contact.html" target="_blank" rel="noopener"><%- icon("external") %>View Contact page</a>
+  </div>
+</form>
+
+<%- include("_foot") %>

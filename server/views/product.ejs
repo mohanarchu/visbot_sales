@@ -1,0 +1,65 @@
+<%- include("partials/head", { title: plain(p.name) + " — Visbot Industries", desc: plain(p.tag) + " Price, key features and full technical specifications from Visbot Industries, Coimbatore.", active: "products", WA }) %>
+
+<section class="page-banner">
+  <div class="wrap">
+    <span class="crumb"><a href="/products.html">&larr; All machines</a></span>
+    <h1><%= p.name %></h1>
+    <% if (p.tag) { %><p><%= p.tag %></p><% } %>
+    <span class="price-pill"><%= p.price %><% if (p.price_note) { %> <small><%= p.price_note %></small><% } %></span>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="detail-grid">
+      <% if (p.image) { %>
+      <div class="detail-photo">
+        <img src="/assets/products/<%= p.image %>" alt="<%= plain(p.name) %>">
+        <p class="hint">Click the photo to enlarge</p>
+      </div>
+      <% } else { %>
+      <div class="detail-photo"><div class="ph" style="aspect-ratio:4/3;">Photo on request</div></div>
+      <% } %>
+      <div>
+        <span class="eyebrow">Overview</span>
+        <h2>About this machine</h2>
+        <p style="max-width:65ch;"><%= p.intro %></p>
+        <% if (p.features && p.features.length) { %>
+        <h3 style="margin-top:1.6rem;">Key features</h3>
+        <ul class="checks" style="margin-top:.9rem;">
+          <% p.features.forEach((f) => { %><li><%- f %></li><% }) %>
+        </ul>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</section>
+
+<% if (p.specs && p.specs.length) { %>
+<section class="section alt">
+  <div class="wrap">
+    <span class="eyebrow">Specifications</span>
+    <h2><%= p.spec_title || "Technical parameters" %></h2>
+    <div class="table-scroll" style="margin-top:1.5rem; max-width:860px;">
+      <table class="spec-lg">
+        <% p.specs.forEach((r) => { %><tr><td><%= r[0] %></td><td><%= r[1] %></td></tr><% }) %>
+      </table>
+      <% if (p.note) { %><p class="form-note" style="margin-top:1rem;">Note: <%= p.note %></p><% } %>
+    </div>
+    <p class="form-note" style="margin-top:1.2rem;">Specifications are typical values from the Visbot product catalog and may vary with configuration. Prices are indicative ex-factory rates — confirm the current model and price on enquiry.</p>
+  </div>
+</section>
+<% } %>
+
+<section class="section cta-band">
+  <div class="wrap">
+    <h2>Interested in this machine?</h2>
+    <p>Get a current quotation, watch a live demo on video call, or visit the Coimbatore factory to see it running before you buy.</p>
+    <div class="hero-cta">
+      <a class="btn" href="<%= enquireLink(p.name) %>">Enquire about this machine</a>
+      <a class="btn ghost-light" href="/contact.html">Contact &amp; Regional Numbers</a>
+    </div>
+  </div>
+</section>
+
+<%- include("partials/footer", { WA }) %>

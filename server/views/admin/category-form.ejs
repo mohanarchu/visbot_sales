@@ -1,0 +1,48 @@
+<%- include("_head", {
+  title: c ? c.name : "New category",
+  subtitle: c ? "Editing category" : "Adds a new section to the Products page",
+  nav: "categories",
+  back: "/admin/categories"
+}) %>
+
+<form class="panel" method="post" action="/admin/categories<%= c ? "/" + c.id : "" %>" <%= c ? "" : "data-new" %>>
+  <section class="form-section">
+    <header>
+      <h3>Category</h3>
+      <p>Each category is one section heading on the Products page.</p>
+    </header>
+    <div class="stack">
+      <div class="grid-2">
+        <label class="field">
+          <span class="lbl">Name</span>
+          <input type="text" name="name" required value="<%= c ? c.name : "" %>" placeholder="e.g. Welding Machines">
+        </label>
+        <label class="field">
+          <span class="lbl">Section anchor <span class="hint">products.html#&lt;slug&gt;</span></span>
+          <input type="text" name="slug" required pattern="[a-z0-9-]+" value="<%= c ? c.slug : "" %>" placeholder="welding">
+        </label>
+      </div>
+      <div class="grid-3">
+        <label class="field">
+          <span class="lbl">Count label <span class="hint">shown as "6 machines"</span></span>
+          <input type="text" name="count_label" value="<%= c ? c.count_label : "machines" %>" placeholder="machines">
+        </label>
+        <label class="field">
+          <span class="lbl">Cards per row <span class="hint">2 to 4</span></span>
+          <input type="number" name="cols" min="2" max="4" value="<%= c ? c.cols : 3 %>">
+        </label>
+        <label class="field">
+          <span class="lbl">Sort order <span class="hint">lower numbers first</span></span>
+          <input type="number" name="sort_order" value="<%= c ? c.sort_order : 0 %>">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <button class="btn" type="submit"><%- icon("check") %><%= c ? "Save changes" : "Create category" %></button>
+    <a class="btn btn--ghost" href="/admin/categories">Cancel</a>
+  </div>
+</form>
+
+<%- include("_foot") %>

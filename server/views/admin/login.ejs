@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in — Visbot Admin</title>
+<link rel="icon" href="/assets/logo-mark.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="login-page">
+
+<form class="login-card" method="post" action="/admin/login">
+  <div class="lhead">
+    <img src="/assets/logo-mark.png" alt="Visbot Industries">
+    <h1>VISBOT <i>ADMIN</i></h1>
+    <p>Sign in to manage the website content</p>
+  </div>
+
+  <% if (error) { %>
+  <div class="flash flash--err" role="alert">
+    <%- icon("alert") %><span><%= error %></span>
+  </div>
+  <% } %>
+
+  <label class="field">
+    <span class="lbl">Mobile number or email</span>
+    <input name="username" type="text" required autofocus autocomplete="username"
+           placeholder="98765 43210">
+  </label>
+  <label class="field">
+    <span class="lbl">Password</span>
+    <input name="password" type="password" required autocomplete="current-password">
+  </label>
+
+  <button class="btn" type="submit">Sign in</button>
+  <p class="login-foot">Visbot Industries · Coimbatore</p>
+</form>
+
+</body>
+</html>

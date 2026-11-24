@@ -1,0 +1,17 @@
+# Dependencies — restored with `npm ci` in server/
+node_modules/
+
+# Secrets. The server keeps its own copy at /var/www/visbot/server/.env, which
+# deploy.sh never uploads or overwrites. deploy/env.production.example is the
+# template and holds placeholders only.
+.env
+.env.*
+server/.env
+
+# macOS
+.DS_Store
+._*
+
+# Logs and local scratch
+*.log
+npm-debug.log*

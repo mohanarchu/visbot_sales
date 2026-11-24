@@ -1,0 +1,140 @@
+<%- include("_head", {
+  title: l ? "Edit " + l.name : "Add a lead",
+  subtitle: l ? "Lead #" + l.id : "For phone calls, IndiaMART enquiries, exhibition contacts and factory walk-ins",
+  nav: l ? "leads" : "lead-new",
+  back: l ? "/admin/leads/" + l.id : "/admin/leads"
+}) %>
+
+<form class="panel" method="post" action="/admin/leads<%= l ? "/" + l.id : "" %>">
+
+  <section class="form-section">
+    <header>
+      <h3>Who is enquiring?</h3>
+      <p>The name is required. A phone number lets you call or WhatsApp them straight from the lead.</p>
+    </header>
+    <div class="stack">
+      <div class="grid-3">
+        <label class="field">
+          <span class="lbl">Name</span>
+          <input type="text" name="name" required value="<%= l ? l.name : "" %>" placeholder="e.g. Ramesh Kumar">
+        </label>
+        <label class="field">
+          <span class="lbl">Phone</span>
+          <input type="text" name="phone" value="<%= l && l.phone ? l.phone : "" %>" placeholder="+91 98765 43210">
+        </label>
+        <label class="field">
+          <span class="lbl">Email <span class="hint">optional</span></span>
+          <input type="text" name="email" value="<%= l && l.email ? l.email : "" %>">
+        </label>
+      </div>
+      <div class="grid-3">
+        <label class="field">
+          <span class="lbl">Company <span class="hint">optional</span></span>
+          <input type="text" name="company" value="<%= l && l.company ? l.company : "" %>">
+        </label>
+        <label class="field">
+          <span class="lbl">City</span>
+          <input type="text" name="city" value="<%= l && l.city ? l.city : "" %>" placeholder="e.g. Coimbatore">
+        </label>
+        <label class="field">
+          <span class="lbl">State <span class="hint">decides which sales person covers it</span></span>
+          <%
+            // Chosen from the master list, because the state decides whose
+            // territory the lead falls in. Anything already on the lead that
+            // the list does not recognise is kept as it is.
+            const typed = (l && l.state) || "";
+            const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const match = (states || []).find((s) => norm(s.name) === norm(typed) || norm(s.code) === norm(typed));
+          %>
+          <% if (!(states || []).length) { %>
+          <input type="text" name="state" value="<%= typed %>" placeholder="e.g. Tamil Nadu">
+          <% } else { %>
+          <select name="state">
+            <option value="">— not given —</option>
+            <% if (typed && !match) { %>
+            <option value="<%= typed %>" selected><%= typed %> — not a state we know</option>
+            <% } %>
+            <% states.forEach((s) => { %>
+            <option value="<%= s.name %>" <%= match && match.id === s.id ? "selected" : "" %>><%= s.name %></option>
+            <% }) %>
+          </select>
+          <% } %>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>What do they want?</h3>
+      <p>Pick a machine from the catalogue or type anything else — a spare, a full factory setup, or a general enquiry.</p>
+    </header>
+    <div class="stack">
+      <label class="field">
+        <span class="lbl">Interested in</span>
+        <input type="text" name="interest" list="product-list" value="<%= l && l.interest ? l.interest : "" %>" placeholder="e.g. Double Head Welding Machine">
+        <datalist id="product-list">
+          <% products.forEach((p) => { %><option value="<%= p.name %>"></option><% }) %>
+          <option value="Complete Window Factory Setup"></option>
+          <option value="Spares &amp; Tools"></option>
+        </datalist>
+      </label>
+      <label class="field">
+        <span class="lbl">Requirement / message</span>
+        <textarea name="message" rows="4" placeholder="Budget, timeline, profile type, number of machines…"><%= l && l.message ? l.message : "" %></textarea>
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Pipeline</h3>
+      <p>Where this lead came from, how hot it is, and when to chase it next.</p>
+    </header>
+    <div class="stack">
+      <div class="grid-3">
+        <label class="field">
+          <span class="lbl">Source</span>
+          <select name="source">
+            <% LEAD.SOURCES.forEach((s) => { %>
+            <option value="<%= s.key %>" <%= (l ? l.source === s.key : s.key === "phone") ? "selected" : "" %>><%= s.label %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Status</span>
+          <select name="status">
+            <% LEAD.STATUSES.forEach((s) => { %>
+            <option value="<%= s.key %>" <%= (l ? l.status === s.key : s.key === "new") ? "selected" : "" %>><%= s.label %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label class="field">
+          <span class="lbl">Priority</span>
+          <select name="priority">
+            <% LEAD.PRIORITIES.forEach((p) => { %>
+            <option value="<%= p.key %>" <%= (l ? l.priority === p.key : p.key === "medium") ? "selected" : "" %>><%= p.label %></option>
+            <% }) %>
+          </select>
+        </label>
+      </div>
+      <div class="grid-2">
+        <label class="field">
+          <span class="lbl">Owner <span class="hint">who is handling this lead</span></span>
+          <input type="text" name="owner" value="<%= l && l.owner ? l.owner : "" %>" placeholder="e.g. Ganesh">
+        </label>
+        <label class="field">
+          <span class="lbl">Next follow-up <span class="hint">optional</span></span>
+          <input type="date" name="next_followup" value="<%= l ? dateInput(l.next_followup) : "" %>">
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <button class="btn" type="submit"><%- icon("check") %><%= l ? "Save changes" : "Create lead" %></button>
+    <a class="btn btn--ghost" href="<%= l ? "/admin/leads/" + l.id : "/admin/leads" %>">Cancel</a>
+  </div>
+</form>
+
+<%- include("_foot") %>

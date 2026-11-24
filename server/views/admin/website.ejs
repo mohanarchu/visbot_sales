@@ -1,0 +1,87 @@
+<%- include("_head", { title: "Website content", subtitle: "What visitors see on visbotindustries.com — changes go live immediately", nav: "website" }) %>
+
+<div class="stats">
+  <a class="stat" href="/admin/categories">
+    <span class="ico-box"><%- icon("layers") %></span>
+    <span class="txt"><b><%= counts.cats %></b><span class="cap">Categories</span></span>
+  </a>
+  <a class="stat" href="/admin/products">
+    <span class="ico-box"><%- icon("box") %></span>
+    <span class="txt"><b><%= counts.products %></b><span class="cap">Products</span></span>
+  </a>
+  <a class="stat" href="/admin/spares">
+    <span class="ico-box"><%- icon("wrench") %></span>
+    <span class="txt"><b><%= counts.spares %></b><span class="cap">Spares in <%= counts.groups %> groups</span></span>
+  </a>
+  <a class="stat" href="/admin/locations">
+    <span class="ico-box"><%- icon("pin") %></span>
+    <span class="txt"><b><%= counts.locations %></b><span class="cap">Locations</span></span>
+  </a>
+  <a class="stat" href="/admin/regions">
+    <span class="ico-box"><%- icon("phone") %></span>
+    <span class="txt"><b><%= counts.regions %></b><span class="cap">Regional contacts</span></span>
+  </a>
+</div>
+
+<div class="cols">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Catalogue by category</h2>
+      <span class="hint">Products shown on the Products page</span>
+    </div>
+    <div class="panel-body">
+      <% const max = Math.max(1, ...byCategory.map((c) => c.n)); %>
+      <div class="bars">
+        <% byCategory.forEach((c) => { %>
+        <div class="bar-row">
+          <a href="/admin/products"><%= c.name %></a>
+          <span class="bar"><i style="width: <%= Math.round((c.n / max) * 100) %>%"></i></span>
+          <span class="n"><%= c.n %></span>
+        </div>
+        <% }) %>
+        <% if (!byCategory.length) { %><p class="muted">No categories yet.</p><% } %>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Needs attention</h2>
+      <% if (noPhoto.length || orphans.length) { %>
+        <span class="right"><span class="chip chip--warn"><%= noPhoto.length + orphans.length %></span></span>
+      <% } else { %>
+        <span class="right"><span class="chip chip--ok">All clear</span></span>
+      <% } %>
+    </div>
+    <div class="panel-body">
+      <% if (!noPhoto.length && !orphans.length) { %>
+        <p class="muted" style="margin:0;">Every product and spare has a photo, and all products are in a category.</p>
+      <% } else { %>
+        <div class="list-links">
+          <% orphans.forEach((p) => { %>
+          <a href="/admin/products/<%= p.id %>/edit"><%- icon("alert") %><%= p.name %><span class="chip chip--warn">No category</span></a>
+          <% }) %>
+          <% noPhoto.forEach((r) => { %>
+          <a href="/admin/<%= r.kind === "spare" ? "spares" : "products" %>/<%= r.id %>/edit"><%- icon("image") %><%= r.name %><span class="chip chip--muted">No photo</span></a>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Manage content</h2></div>
+  <div class="panel-body">
+    <div class="actions-grid">
+      <a class="action-card" href="/admin/categories"><%- icon("layers") %>Product categories</a>
+      <a class="action-card" href="/admin/products"><%- icon("box") %>Products</a>
+      <a class="action-card" href="/admin/spares"><%- icon("wrench") %>Spares</a>
+      <a class="action-card" href="/admin/locations"><%- icon("pin") %>Addresses &amp; locations</a>
+      <a class="action-card" href="/admin/regions"><%- icon("phone") %>Regional contacts</a>
+      <a class="action-card" href="/index.html" target="_blank" rel="noopener"><%- icon("external") %>Open the website</a>
+    </div>
+  </div>
+</section>
+
+<%- include("_foot") %>

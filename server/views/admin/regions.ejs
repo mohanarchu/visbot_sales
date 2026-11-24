@@ -1,0 +1,45 @@
+<%- include("_head", { title: "Regional contacts", subtitle: "The state-wise phone table on the Contact page", nav: "regions" }) %>
+
+<div class="toolbar">
+  <div class="search">
+    <%- icon("search") %>
+    <input type="search" placeholder="Search states or numbers…" data-table="#tbl-regions" aria-label="Search regional contacts">
+  </div>
+  <span class="count" id="count-regions"></span>
+  <a class="btn spacer" href="/admin/regions/new"><%- icon("plus") %>New region</a>
+</div>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table class="data" id="tbl-regions" data-filterable data-count-into="#count-regions" data-empty-into="#empty-regions">
+      <thead>
+        <tr><th>#</th><th>Region</th><th>Phone</th><th class="col-actions">Actions</th></tr>
+      </thead>
+      <tbody>
+        <% regions.forEach((r) => { %>
+        <tr>
+          <td class="num"><%= r.sort_order %></td>
+          <td><span class="name"><%= r.region %></span></td>
+          <td class="nowrap"><%= r.phone %></td>
+          <td class="col-actions">
+            <div class="row-actions">
+              <a class="btn btn--ghost btn--sm" href="/admin/regions/<%= r.id %>/edit"><%- icon("pencil") %>Edit</a>
+              <form method="post" action="/admin/regions/<%= r.id %>/delete" data-confirm="Remove &quot;<%= r.region %>&quot; from the contact table?">
+                <button class="btn btn--danger btn--icon" type="submit" title="Delete" aria-label="Delete"><%- icon("trash") %></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <div class="empty" id="empty-regions" <%= regions.length ? "hidden" : "" %>>
+    <%- icon("phone") %>
+    <h3>No regional contacts</h3>
+    <p>These rows become the "Your regional contact" table on the Contact page.</p>
+    <a class="btn" href="/admin/regions/new"><%- icon("plus") %>New region</a>
+  </div>
+</div>
+
+<%- include("_foot") %>

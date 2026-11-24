@@ -1,0 +1,53 @@
+<%- include("_head", {
+  title: l ? l.title : "New location",
+  subtitle: l ? "Editing address card" : "Adds an address card to the Contact page",
+  nav: "locations",
+  back: "/admin/locations"
+}) %>
+
+<form class="panel" method="post" action="/admin/locations<%= l ? "/" + l.id : "" %>">
+  <section class="form-section">
+    <header>
+      <h3>Address card</h3>
+      <p>Each line of the address becomes a separate line on the card.</p>
+    </header>
+    <div class="stack">
+      <div class="grid-2">
+        <label class="field">
+          <span class="lbl">Title</span>
+          <input type="text" name="title" required value="<%= l ? l.title : "" %>" placeholder="Factory — Coimbatore">
+        </label>
+        <label class="field">
+          <span class="lbl">Sort order <span class="hint">lower numbers first</span></span>
+          <input type="number" name="sort_order" value="<%= l ? l.sort_order : 0 %>">
+        </label>
+      </div>
+      <label class="field">
+        <span class="lbl">Address</span>
+        <textarea name="address" rows="4" placeholder="SF.No. 647 &amp; 648, Pollachi Main Road,&#10;opposite Hemambigai Mahal, Eachanari,&#10;Coimbatore, Tamil Nadu 641021"><%= l && l.address ? l.address : "" %></textarea>
+      </label>
+      <label class="field">
+        <span class="lbl">Google Maps link <span class="hint">optional — adds an "Open in Google Maps" link</span></span>
+        <input type="text" name="map_url" value="<%= l && l.map_url ? l.map_url : "" %>" placeholder="https://maps.google.com/?q=…">
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <header>
+      <h3>Phone numbers</h3>
+      <p>Add one row per number. The label is optional and appears after the number, like "sales &amp; enquiries".</p>
+    </header>
+    <div class="field">
+      <textarea name="phones" rows="4" data-pairs data-key-placeholder="+91 80723 98966" data-value-placeholder="sales &amp; enquiries"><%= l && l.phones ? l.phones.map((ph) => (ph.label ? ph.number + " | " + ph.label : ph.number)).join("\n") : "" %></textarea>
+    </div>
+  </section>
+
+  <div class="form-foot">
+    <button class="btn" type="submit"><%- icon("check") %><%= l ? "Save changes" : "Create location" %></button>
+    <a class="btn btn--ghost" href="/admin/locations">Cancel</a>
+    <a class="btn btn--ghost spacer" href="/contact.html" target="_blank" rel="noopener"><%- icon("external") %>View Contact page</a>
+  </div>
+</form>
+
+<%- include("_foot") %>

@@ -1,0 +1,73 @@
+<%- include("_head", { title: "Products", subtitle: "Machines shown on the Products page and their detail pages", nav: "products" }) %>
+
+<div class="toolbar">
+  <div class="search">
+    <%- icon("search") %>
+    <input type="search" placeholder="Search by name, price, slug…" data-table="#tbl-products" aria-label="Search products">
+  </div>
+  <select data-table="#tbl-products" data-mode="key" data-key="cat" aria-label="Filter by category">
+    <option value="">All categories</option>
+    <% cats.forEach((c) => { %><option value="<%= c.name %>"><%= c.name %></option><% }) %>
+  </select>
+  <span class="count" id="count-products"></span>
+  <a class="btn spacer" href="/admin/products/new"><%- icon("plus") %>New product</a>
+</div>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table class="data" id="tbl-products" data-filterable data-count-into="#count-products" data-empty-into="#empty-products">
+      <thead>
+        <tr><th>Photo</th><th>Product</th><th>Category</th><th>Price</th><th>Status</th><th class="col-actions">Actions</th></tr>
+      </thead>
+      <tbody>
+        <% products.forEach((p) => { const href = "/product/" + (p.detail_slug || p.slug) + ".html"; %>
+        <tr data-cat="<%= p.category_name || "" %>">
+          <td>
+            <% if (p.image) { %>
+              <img class="thumb" src="/assets/products/<%= p.image %>" alt="">
+            <% } else { %>
+              <span class="thumb thumb--empty" title="No photo"><%- icon("image") %></span>
+            <% } %>
+          </td>
+          <td>
+            <span class="name"><%= p.name %></span><br>
+            <a class="sub" href="<%= href %>" target="_blank" rel="noopener"><%= href %> ↗</a>
+          </td>
+          <td>
+            <% if (p.category_name) { %><%= p.category_name %><% } else { %><span class="chip chip--warn">Uncategorised</span><% } %>
+          </td>
+          <td class="nowrap">
+            <%= p.price %>
+            <% if (p.price_note) { %><span class="sub"><%= p.price_note %></span><% } %>
+          </td>
+          <td>
+            <% if (p.show_in_grid) { %>
+              <span class="chip chip--ok">On grid</span>
+            <% } else { %>
+              <span class="chip chip--muted">Detail page only</span>
+            <% } %>
+            <% if (p.detail_slug) { %><span class="chip chip--info">→ <%= p.detail_slug %></span><% } %>
+          </td>
+          <td class="col-actions">
+            <div class="row-actions">
+              <a class="btn btn--ghost btn--sm" href="/admin/products/<%= p.id %>/edit"><%- icon("pencil") %>Edit</a>
+              <form method="post" action="/admin/products/<%= p.id %>/delete"
+                    data-confirm="Delete the product &quot;<%= p.name %>&quot;? This also removes its detail page.">
+                <button class="btn btn--danger btn--icon" type="submit" title="Delete" aria-label="Delete"><%- icon("trash") %></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <div class="empty" id="empty-products" <%= products.length ? "hidden" : "" %>>
+    <%- icon("box") %>
+    <h3>No products match</h3>
+    <p>Try a different search, or clear the category filter.</p>
+    <a class="btn" href="/admin/products/new"><%- icon("plus") %>New product</a>
+  </div>
+</div>
+
+<%- include("_foot") %>

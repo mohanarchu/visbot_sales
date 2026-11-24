@@ -1,0 +1,163 @@
+<%- include("_head", { title: "Lead dashboard", subtitle: "Enquiries from the website, WhatsApp, phone and IndiaMART in one pipeline", nav: "dashboard" }) %>
+
+<div class="stats">
+  <a class="stat <%= stats.new_count ? "stat--accent" : "" %>" href="/admin/leads?status=new">
+    <span class="ico-box"><%- icon("spark") %></span>
+    <span class="txt"><b><%= stats.new_count %></b><span class="cap">New, not yet contacted</span></span>
+  </a>
+  <a class="stat" href="/admin/leads?open=1">
+    <span class="ico-box"><%- icon("pipeline") %></span>
+    <span class="txt"><b><%= stats.open_count %></b><span class="cap">Open in pipeline</span></span>
+  </a>
+  <a class="stat <%= stats.due_count ? "stat--danger" : "" %>" href="/admin/leads?due=1">
+    <span class="ico-box"><%- icon("clock") %></span>
+    <span class="txt"><b><%= stats.due_count %></b><span class="cap">Follow-ups due</span></span>
+  </a>
+  <a class="stat" href="/admin/leads">
+    <span class="ico-box"><%- icon("calendar") %></span>
+    <span class="txt"><b><%= stats.week_count %></b><span class="cap">New in last 7 days</span></span>
+  </a>
+  <a class="stat" href="/admin/leads?status=won">
+    <span class="ico-box"><%- icon("check") %></span>
+    <span class="txt"><b><%= stats.won_count %></b><span class="cap">Won, all time</span></span>
+  </a>
+</div>
+
+<% if (!stats.total) { %>
+<div class="panel">
+  <div class="empty">
+    <%- icon("users") %>
+    <h3>No leads yet</h3>
+    <p style="max-width:60ch; margin-inline:auto;">
+      Enquiries submitted through the contact form on the website now arrive here automatically.
+      You can also add leads by hand for phone calls, IndiaMART enquiries, exhibition contacts and factory walk-ins.
+    </p>
+    <div class="actions-grid" style="max-width:520px; margin:1.2rem auto 0;">
+      <a class="action-card" href="/admin/leads/new"><%- icon("plus") %>Add a lead manually</a>
+      <a class="action-card" href="/contact.html" target="_blank" rel="noopener"><%- icon("external") %>Open the contact form</a>
+    </div>
+  </div>
+</div>
+<% } else { %>
+
+<div class="cols">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Pipeline</h2>
+      <span class="hint"><%= stats.total %> leads in total</span>
+      <div class="right"><a class="btn btn--ghost btn--sm" href="/admin/leads">All leads<%- icon("arrow") %></a></div>
+    </div>
+    <div class="panel-body">
+      <% const maxS = Math.max(1, ...LEAD.STATUSES.map((s) => byStatus[s.key] || 0)); %>
+      <div class="bars">
+        <% LEAD.STATUSES.forEach((s) => { const n = byStatus[s.key] || 0; %>
+        <div class="bar-row">
+          <a href="/admin/leads?status=<%= s.key %>"><span class="chip chip--<%= s.chip || "plain" %>"><%= s.label %></span></a>
+          <span class="bar"><i style="width: <%= Math.round((n / maxS) * 100) %>%"></i></span>
+          <span class="n"><%= n %></span>
+        </div>
+        <% }) %>
+      </div>
+      <% if (stats.won_count + stats.lost_count > 0) { %>
+      <p class="muted" style="margin:1.1rem 0 0; font-size:.85rem;">
+        Closed <%= stats.won_count + stats.lost_count %> leads so far —
+        <b style="color:var(--ok)"><%= Math.round((stats.won_count / (stats.won_count + stats.lost_count)) * 100) %>% won</b>.
+      </p>
+      <% } %>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Follow-ups</h2>
+      <% if (stats.due_count) { %><span class="chip chip--warn"><%= stats.due_count %> due</span><% } %>
+    </div>
+    <div class="panel-body">
+      <% if (!dueSoon.length) { %>
+        <p class="muted" style="margin:0;">Nothing due in the next three days. Set a follow-up date on a lead to see it here.</p>
+      <% } else { %>
+      <div class="list-links">
+        <% dueSoon.forEach((l) => { const d = daysUntil(l.next_followup); %>
+        <a href="/admin/leads/<%= l.id %>">
+          <%- icon(d < 0 ? "alert" : "clock") %>
+          <span><%= l.name %><% if (l.interest) { %> <span class="sub">· <%= l.interest %></span><% } %></span>
+          <span class="chip <%= d < 0 ? "chip--warn" : "chip--muted" %>"><%= dueLabel(l.next_followup) %></span>
+        </a>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+  </section>
+</div>
+
+<div class="cols">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Latest enquiries</h2>
+      <div class="right"><a class="btn btn--ghost btn--sm" href="/admin/leads">View all<%- icon("arrow") %></a></div>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Lead</th><th>Interested in</th><th>Status</th><th>Received</th></tr></thead>
+        <tbody>
+          <% recent.forEach((l) => { const sm = LEAD.statusMeta(l.status); %>
+          <tr>
+            <td>
+              <a class="name" href="/admin/leads/<%= l.id %>"><%= l.name %></a>
+              <% if (l.state || l.city) { %><div class="sub"><%= [l.city, l.state].filter(Boolean).join(", ") %></div><% } %>
+            </td>
+            <td class="sub"><%= l.interest || "—" %></td>
+            <td><span class="chip chip--<%= sm.chip || "plain" %>"><%= sm.label %></span></td>
+            <td class="sub nowrap" title="<%= fmtDateTime(l.created_at) %>"><%= ago(l.created_at) %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Where leads come from</h2></div>
+    <div class="panel-body">
+      <% const maxSrc = Math.max(1, ...bySource.map((s) => s.n)); %>
+      <div class="bars">
+        <% bySource.forEach((s) => { %>
+        <div class="bar-row">
+          <a href="/admin/leads?source=<%= s.source %>"><%= LEAD.sourceLabel(s.source) %></a>
+          <span class="bar"><i style="width: <%= Math.round((s.n / maxSrc) * 100) %>%"></i></span>
+          <span class="n"><%= s.n %></span>
+        </div>
+        <% }) %>
+      </div>
+
+      <% if (topInterest.length) { %>
+      <h3 style="font-size:.82rem; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); margin:1.4rem 0 .7rem;">Most asked about</h3>
+      <div class="bars">
+        <% const maxI = Math.max(1, ...topInterest.map((t) => t.n)); %>
+        <% topInterest.forEach((t) => { %>
+        <div class="bar-row">
+          <a href="/admin/leads?q=<%= encodeURIComponent(t.interest) %>"><%= t.interest %></a>
+          <span class="bar"><i style="width: <%= Math.round((t.n / maxI) * 100) %>%"></i></span>
+          <span class="n"><%= t.n %></span>
+        </div>
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+  </section>
+</div>
+<% } %>
+
+<section class="panel">
+  <div class="panel-head"><h2>Quick actions</h2></div>
+  <div class="panel-body">
+    <div class="actions-grid">
+      <a class="action-card" href="/admin/leads/new"><%- icon("plus") %>Add a lead</a>
+      <a class="action-card" href="/admin/leads?due=1"><%- icon("clock") %>Today's follow-ups</a>
+      <a class="action-card" href="/admin/leads/export.csv"><%- icon("download") %>Export leads to CSV</a>
+      <a class="action-card" href="/admin/website"><%- icon("globe") %>Manage website content</a>
+    </div>
+  </div>
+</section>
+
+<%- include("_foot") %>

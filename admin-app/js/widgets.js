@@ -1,0 +1,113 @@
+// Richer inputs shared by the content forms.
+import { h, icon, field, select, textarea } from "./ui.js";
+
+// Photo chooser with a live preview: pick from the library or upload a file.
+export function imagePicker(current, images) {
+  const img = h("img", { alt: "", hidden: !current });
+  if (current) img.src = "/assets/products/" + current;
+  const ph = h("span.ph", { hidden: !!current }, icon("image"), "No photo");
+
+  const sel = select("image",
+    [{ value: "", label: "— no photo —" }, ...images.map((f) => ({ value: f, label: f }))],
+    current || "");
+  const file = h("input", { type: "file", name: "image_file", accept: "image/*" });
+
+  const show = (src) => {
+    if (src) { img.src = src; img.hidden = false; ph.hidden = true; }
+    else { img.removeAttribute("src"); img.hidden = true; ph.hidden = false; }
+  };
+  sel.addEventListener("change", () => show(sel.value ? "/assets/products/" + sel.value : ""));
+  file.addEventListener("change", () => {
+    const f = file.files && file.files[0];
+    if (f) show(URL.createObjectURL(f));
+  });
+
+  return h("div.img-pick",
+    h("div.img-prev-box", img, ph),
+    h("div.stack",
+      field({ label: "Photo library", input: sel }),
+      field({ label: "Upload a new photo", hint: "JPG, PNG or WebP · max 8 MB", input: file })));
+}
+
+// Row editor over a hidden "label | value" textarea, which is what the API takes.
+export function pairsEditor(name, pairs, keyPh, valPh) {
+  const store = textarea(name, "", { rows: 4, class: "pairs-raw" });
+  const rows = h("div.pairs");
+
+  const sync = () => {
+    const lines = [];
+    rows.querySelectorAll(".pair").forEach((row) => {
+      const [a, b] = row.querySelectorAll("input");
+      const k = a.value.trim().replace(/\|/g, "/");
+      const v = b.value.trim();
+      if (k || v) lines.push(v ? k + " | " + v : k);
+    });
+    store.value = lines.join("\n");
+  };
+
+  const addRow = (k = "", v = "") => {
+    const a = h("input", { type: "text", value: k, placeholder: keyPh, oninput: sync });
+    const b = h("input", { type: "text", value: v, placeholder: valPh, oninput: sync });
+    const del = h("button.btn.btn--ghost.btn--icon",
+      { type: "button", title: "Remove row", "aria-label": "Remove row" }, icon("trash"));
+    const row = h("div.pair", a, b, del);
+    del.addEventListener("click", () => {
+      row.remove();
+      if (!rows.children.length) addRow();
+      sync();
+    });
+    rows.append(row);
+    return row;
+  };
+
+  (pairs && pairs.length ? pairs : [["", ""]]).forEach(([k, v]) => addRow(k, v));
+  sync();
+
+  const add = h("button.btn.btn--ghost.btn--sm", { type: "button" }, icon("plus"), "Add row");
+  add.addEventListener("click", () => {
+    addRow().querySelector("input").focus();
+    sync();
+  });
+
+  const raw = h("button.btn.btn--ghost.btn--sm", { type: "button", text: "Edit as text" });
+  raw.addEventListener("click", () => {
+    const showing = store.classList.toggle("is-shown");
+    raw.textContent = showing ? "Back to row editor" : "Edit as text";
+    rows.hidden = showing;
+    add.hidden = showing;
+    if (showing) { store.focus(); return; }
+    rows.replaceChildren();
+    store.value.split("\n").map((l) => l.trim()).filter(Boolean).forEach((l) => {
+      const i = l.indexOf("|");
+      addRow(i === -1 ? l : l.slice(0, i).trim(), i === -1 ? "" : l.slice(i + 1).trim());
+    });
+    if (!rows.children.length) addRow();
+    sync();
+  });
+
+  return h("div", rows, h("div.pairs-foot", add, raw), store);
+}
+
+// Textarea with a live "N features" counter.
+export function countedTextarea(name, value, noun, props = {}) {
+  const ta = textarea(name, value, Object.assign({ rows: 9 }, props));
+  const out = h("span.counter");
+  const run = () => {
+    const n = ta.value.split("\n").filter((l) => l.trim()).length;
+    out.textContent = `${n} ${n === 1 ? noun : noun + "s"}`;
+  };
+  ta.addEventListener("input", run);
+  run();
+  return h("div", ta, out);
+}
+
+// Fill a slug field from a name field until the user edits the slug themselves.
+export function linkSlug(nameInput, slugInput) {
+  let touched = false;
+  slugInput.addEventListener("input", () => { touched = true; });
+  nameInput.addEventListener("input", () => {
+    if (touched) return;
+    slugInput.value = nameInput.value.toLowerCase()
+      .replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  });
+}

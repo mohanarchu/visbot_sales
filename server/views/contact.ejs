@@ -1,0 +1,137 @@
+<%- include("partials/head", { title: "Contact — Visbot Industries", desc: "Contact Visbot Industries, Coimbatore — enquiry form, WhatsApp, state-wise sales contacts across India, factory and Bengaluru experience center addresses.", active: "contact", WA }) %>
+
+<section class="page-banner">
+  <div class="wrap">
+    <span class="eyebrow">Get in touch</span>
+    <h1>Talk to Visbot</h1>
+    <p>Send an enquiry, call your regional contact, or visit us in Coimbatore or Bengaluru. Every enquiry reaches our sales team directly.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="contact-grid">
+      <div id="enquiry">
+        <h2>Send an enquiry</h2>
+        <p class="form-note">Your enquiry goes straight to our sales team — nothing else to send. We reply within one working day.</p>
+        <form class="enquiry">
+          <label for="f-name">Your name
+            <input id="f-name" name="name" type="text" required autocomplete="name">
+          </label>
+          <label for="f-phone">Phone number
+            <input id="f-phone" name="phone" type="tel" required autocomplete="tel">
+          </label>
+          <label for="f-email">Email address (optional)
+            <input id="f-email" name="email" type="email" autocomplete="email">
+          </label>
+          <label for="f-state">State
+            <select id="f-state" name="state" required>
+              <option value="">Select your state</option>
+              <% (states || []).forEach((s) => { %>
+              <option value="<%= s.name %>"><%= s.name %></option>
+              <% }) %>
+            </select>
+          </label>
+          <label for="f-machine">Machine or spare you're interested in
+            <select id="f-machine" name="machine">
+              <option>Complete Window Factory Setup</option>
+              <option>Welding Machine</option>
+              <option>Cutting Machine</option>
+              <option>Copy Router Machine</option>
+              <option>Finishing / Milling Machine</option>
+              <option>Air Compressor</option>
+              <option>Spares &amp; Tools</option>
+              <option>Other / Not sure yet</option>
+            </select>
+          </label>
+          <label for="f-msg">Message (optional)
+            <textarea id="f-msg" name="message" rows="4" placeholder="Tell us about your requirement, budget or timeline"></textarea>
+          </label>
+          <button class="btn" type="submit">Send enquiry</button>
+        </form>
+        <p class="form-note" style="margin-top:1rem;">Prefer email? Write to <b>visbotindustries@gmail.com</b></p>
+      </div>
+      <div style="display:grid; gap:1.2rem; align-content:start;">
+        <% locations.forEach((l) => { %>
+        <div class="addr-card">
+          <h3><%= l.title %></h3>
+          <% if (l.address) { %><p><%- l.address.split("\n").map((line) => line.replace(/&/g, "&amp;").replace(/</g, "&lt;")).join("<br>") %></p><% } %>
+          <% const labelled = (l.phones || []).filter((ph) => ph.label);
+             const bare = (l.phones || []).filter((ph) => !ph.label); %>
+          <% labelled.forEach((ph) => { %><p><b><%= ph.number %></b> &middot; <%= ph.label %></p><% }) %>
+          <% if (bare.length) { %><p><%- bare.map((ph) => "<b>" + ph.number + "</b>").join(" &middot; ") %></p><% } %>
+          <% if (l.map_url) { %><p><a href="<%= l.map_url %>" target="_blank" rel="noopener">Open in Google Maps &rarr;</a></p><% } %>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <span class="eyebrow">Pan-India sales</span>
+    <h2>Your regional contact</h2>
+    <p class="lede">Dedicated sales support in your state — call or WhatsApp directly.</p>
+    <div class="table-scroll" style="margin-top:1.5rem;">
+      <table class="contact-table">
+        <tr><th>Region</th><th>Phone</th></tr>
+        <% regions.forEach((r) => { %>
+        <tr><td><b><%= r.region %></b></td><td><%= r.phone %></td></tr>
+        <% }) %>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <span class="eyebrow">Good to know</span>
+    <h2>Before you buy</h2>
+    <div class="grid cols-3" style="margin-top:1.5rem;">
+      <div class="card">
+        <h3>Inspect at the factory</h3>
+        <p>We encourage customers to see and test their machine at our Coimbatore factory before taking delivery.</p>
+      </div>
+      <div class="card">
+        <h3>Training &amp; installation</h3>
+        <p>Operator training and on-site installation are available at additional cost — ask for a combined quote.</p>
+      </div>
+      <div class="card">
+        <h3>Direct billing only</h3>
+        <p>All invoicing is done directly by Visbot Industries. Make payments only to the company's official bank account, never to individuals or dealers.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="wrap">
+    <span class="eyebrow">Common questions</span>
+    <h2>Frequently asked questions</h2>
+    <div class="faq" style="margin-top:1.5rem;">
+      <details>
+        <summary>Do you provide training and installation?</summary>
+        <p class="a">Yes. Operator training and on-site installation are available at additional cost — ask for a combined quote with your machine so your line is productive from day one.</p>
+      </details>
+      <details>
+        <summary>Can I see a machine running before I buy?</summary>
+        <p class="a">Absolutely, and we encourage it. Visit the factory in Coimbatore to inspect and test your machine before delivery, or the experience center in Bengaluru for live demos. Machine demo videos are also on our YouTube channel.</p>
+      </details>
+      <details>
+        <summary>How does delivery work?</summary>
+        <p class="a">We arrange transport as a facilitator. Please inspect your machine at the factory before dispatch — machines and tools cannot be returned for damage that happens in transit or at site.</p>
+      </details>
+      <details>
+        <summary>Who should I make payments to?</summary>
+        <p class="a">Only to the official Visbot Industries company bank account. All invoicing is done directly by the company — never pay individuals or dealers.</p>
+      </details>
+      <details>
+        <summary>Do you supply spares for other machine brands?</summary>
+        <p class="a">In most cases, yes. Heater plates, Teflon sheets, router bits and cleaning tools fit most uPVC machinery. Send us a photo of the part on WhatsApp and we'll confirm.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<%- include("partials/footer", { WA }) %>

@@ -1,0 +1,200 @@
+<%
+  const sm = LEAD.statusMeta(l.status);
+  const pm = LEAD.priorityMeta(l.priority);
+  const wa = waNumber(l.phone);
+  const d = daysUntil(l.next_followup);
+%>
+<%- include("_head", {
+  title: l.name,
+  subtitle: "Lead #" + l.id + " · " + LEAD.sourceLabel(l.source) + " · received " + fmtDateTime(l.created_at),
+  nav: "leads",
+  back: "/admin/leads"
+}) %>
+
+<div class="lead-head">
+  <div class="avatar"><%= initials(l.name) %></div>
+  <div class="lead-head-txt">
+    <h2><%= l.name %></h2>
+    <div class="lead-head-meta">
+      <span class="chip chip--<%= sm.chip || "plain" %>"><%= sm.label %></span>
+      <span class="chip chip--<%= pm.chip || "plain" %>"><%= pm.label %> priority</span>
+      <% if (l.company) { %><span class="muted"><%= l.company %></span><% } %>
+      <% if (l.city || l.state) { %><span class="muted"><%- icon("pin") %><%= [l.city, l.state].filter(Boolean).join(", ") %></span><% } %>
+    </div>
+  </div>
+  <div class="lead-head-actions">
+    <% if (wa) { %>
+    <a class="btn" href="https://wa.me/<%= wa %>" target="_blank" rel="noopener"><%- icon("chat") %>WhatsApp</a>
+    <% } %>
+    <% if (l.phone) { %>
+    <a class="btn btn--ghost" href="tel:<%= l.phone.replace(/\s+/g, "") %>"><%- icon("phone") %>Call</a>
+    <% } %>
+    <a class="btn btn--ghost" href="/admin/leads/<%= l.id %>/edit"><%- icon("pencil") %>Edit</a>
+  </div>
+</div>
+
+<div class="cols cols--lead">
+  <div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Move through the pipeline</h2>
+        <span class="hint">Each change is recorded in the activity log</span>
+      </div>
+      <div class="panel-body">
+        <div class="status-picker">
+          <% LEAD.STATUSES.forEach((s) => { %>
+          <%# The button for the current status is disabled, so it needs no question. -%>
+          <form method="post" action="/admin/leads/<%= l.id %>/status"<% if (l.status !== s.key) { %>
+                data-confirm="<%= l.name %> moves from <%= sm.label %> to <%= s.label %>. This is recorded in the activity log, and whoever is handling the lead sees it in the sales app."
+                data-confirm-title="Move to <%= s.label %>?"
+                data-confirm-ok="Move to <%= s.label %>"<% } %>>
+            <input type="hidden" name="status" value="<%= s.key %>">
+            <button class="status-btn <%= l.status === s.key ? "is-current" : "" %>" type="submit"
+                    <%= l.status === s.key ? "disabled" : "" %>>
+              <%= s.label %>
+            </button>
+          </form>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Log activity</h2>
+      </div>
+      <form class="panel-body" method="post" action="/admin/leads/<%= l.id %>/notes">
+        <div class="stack">
+          <label class="field">
+            <span class="lbl">What happened?</span>
+            <textarea name="note" rows="3" placeholder="e.g. Called and shared the quotation for the double head welder. Asked for a factory visit next week."></textarea>
+          </label>
+          <div class="grid-3">
+            <label class="field">
+              <span class="lbl">Type</span>
+              <select name="kind">
+                <option value="note">Note</option>
+                <option value="call">Call / WhatsApp</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="lbl">Next follow-up <span class="hint">optional</span></span>
+              <input type="date" name="next_followup" value="">
+            </label>
+            <div class="field" style="align-self:end;">
+              <button class="btn" type="submit"><%- icon("check") %>Save activity</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Activity log</h2>
+        <span class="chip chip--muted"><%= notes.length %></span>
+      </div>
+      <div class="panel-body">
+        <% if (!notes.length) { %>
+          <p class="muted" style="margin:0;">No activity recorded yet.</p>
+        <% } else { %>
+        <ol class="timeline">
+          <% notes.forEach((n) => { %>
+          <li class="tl-item tl-<%= n.kind %>">
+            <span class="tl-dot">
+              <%- icon(n.kind === "call" ? "phone" : n.kind === "status" ? "arrow" : n.kind === "followup" ? "calendar" : n.kind === "created" ? "spark" : "chat") %>
+            </span>
+            <div class="tl-body">
+              <p><%= n.note %></p>
+              <time title="<%= fmtDateTime(n.created_at) %>"><%= ago(n.created_at) %></time>
+            </div>
+          </li>
+          <% }) %>
+        </ol>
+        <% } %>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Lead details</h2></div>
+      <div class="panel-body">
+        <dl class="kv">
+          <dt>Phone</dt>
+          <dd><% if (l.phone) { %><a href="tel:<%= l.phone.replace(/\s+/g, "") %>"><%= l.phone %></a><% } else { %><span class="muted">Not given</span><% } %></dd>
+
+          <dt>Email</dt>
+          <dd><% if (l.email) { %><a href="mailto:<%= l.email %>"><%= l.email %></a><% } else { %><span class="muted">Not given</span><% } %></dd>
+
+          <dt>Company</dt>
+          <dd><%= l.company || "—" %></dd>
+
+          <dt>Location</dt>
+          <dd><%= [l.city, l.state].filter(Boolean).join(", ") || "—" %></dd>
+
+          <dt>Interested in</dt>
+          <dd><%= l.interest || "—" %></dd>
+
+          <dt>Source</dt>
+          <dd><%= LEAD.sourceLabel(l.source) %></dd>
+
+          <% if (l.meta_campaign_name) { %>
+          <dt>Campaign</dt>
+          <dd><%= l.meta_campaign_name %></dd>
+          <% } %>
+          <% if (l.meta_ad_name) { %>
+          <dt>Ad</dt>
+          <dd><%= l.meta_ad_name %></dd>
+          <% } %>
+          <% if (l.meta_form_name || l.meta_form_id) { %>
+          <dt>Lead form</dt>
+          <dd><%= l.meta_form_name || l.meta_form_id %></dd>
+          <% } %>
+          <% if (l.meta_leadgen_id) { %>
+          <dt>Meta lead id</dt>
+          <dd style="font-size:.8rem;"><%= l.meta_leadgen_id %></dd>
+          <% } %>
+
+          <dt>Owner</dt>
+          <dd><%= l.owner || "Unassigned" %></dd>
+
+          <dt>Next follow-up</dt>
+          <dd>
+            <% if (l.next_followup) { %>
+              <%= fmtDate(l.next_followup) %>
+              <span class="chip <%= d < 0 ? "chip--warn" : "chip--muted" %>"><%= dueLabel(l.next_followup) %></span>
+            <% } else { %><span class="muted">Not set</span><% } %>
+          </dd>
+
+          <dt>Received</dt>
+          <dd><%= fmtDateTime(l.created_at) %></dd>
+
+          <dt>Last updated</dt>
+          <dd><%= ago(l.updated_at) %></dd>
+        </dl>
+      </div>
+    </section>
+
+    <% if (l.message) { %>
+    <section class="panel">
+      <div class="panel-head"><h2>Their message</h2></div>
+      <div class="panel-body">
+        <blockquote class="quote"><%= l.message %></blockquote>
+      </div>
+    </section>
+    <% } %>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Danger zone</h2></div>
+      <div class="panel-body">
+        <p class="muted" style="margin:0 0 .8rem; font-size:.86rem;">Deleting a lead also removes its activity log. This cannot be undone.</p>
+        <form method="post" action="/admin/leads/<%= l.id %>/delete" data-confirm="Delete the lead &quot;<%= l.name %>&quot; and its activity log? This cannot be undone.">
+          <button class="btn btn--danger" type="submit"><%- icon("trash") %>Delete this lead</button>
+        </form>
+      </div>
+    </section>
+  </div>
+</div>
+
+<%- include("_foot") %>

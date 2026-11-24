@@ -1,0 +1,89 @@
+/* Single-page-app additions on top of /css/admin.css */
+
+/* ---- boot screen ---- */
+.boot {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  gap: 1.2rem;
+  grid-auto-flow: row;
+}
+.boot-mark img { width: 54px; height: 54px; object-fit: contain; opacity: .9; }
+
+.spinner {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 2.5px solid var(--line);
+  border-top-color: var(--red);
+  animation: spin .7s linear infinite;
+}
+.spinner--sm { width: 15px; height: 15px; border-width: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- navigation progress ---- */
+.nav-progress {
+  position: fixed; top: 0; left: 0; height: 2px; width: 0;
+  background: var(--red); z-index: 100;
+  transition: width .2s ease, opacity .3s;
+  opacity: 0;
+}
+.nav-progress.on { opacity: 1; }
+
+/* ---- skeletons: shown while an API call is in flight ---- */
+.skel { background: #eceff2; border-radius: 6px; position: relative; overflow: hidden; }
+.skel::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.75), transparent);
+  animation: shimmer 1.3s infinite;
+}
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+.skel-line { height: 12px; margin: .55rem 0; }
+.skel-row { display: grid; grid-template-columns: 54px 1fr 120px 100px 90px; gap: 1rem; align-items: center; padding: .72rem 1rem; border-bottom: 1px solid var(--line-2); }
+.skel-row > * { height: 14px; }
+.skel-row .skel:first-child { height: 40px; }
+.skel-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); gap: 1rem; margin-bottom: 1.3rem; }
+.skel-card { height: 74px; }
+.skel-panel { height: 220px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .skel::after { animation: none; }
+  .spinner { animation-duration: 2s; }
+}
+
+/* ---- toasts ---- */
+.toasts {
+  position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 200;
+  display: grid; gap: .5rem; max-width: min(420px, calc(100vw - 2rem));
+}
+.toast {
+  display: flex; align-items: flex-start; gap: .55rem;
+  padding: .7rem .9rem; border-radius: var(--r-sm);
+  background: #fff; border: 1px solid var(--ok-line);
+  box-shadow: var(--sh-2); font-size: .88rem; font-weight: 600; color: var(--ok);
+  animation: toast-in .22s ease;
+}
+.toast--err { border-color: #f3cccc; color: #b61f26; }
+.toast .ico { flex: none; margin-top: 1px; }
+.toast button { margin-left: auto; border: 0; background: none; color: inherit; cursor: pointer; opacity: .55; padding: 0; }
+.toast button:hover { opacity: 1; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* ---- busy state on buttons ---- */
+.btn[aria-busy="true"] { pointer-events: none; opacity: .72; }
+
+/* ---- the view container fades in once data arrives ---- */
+.view-enter { animation: view-in .18s ease; }
+@keyframes view-in { from { opacity: 0; transform: translateY(3px); } }
+
+/* ---- login ---- */
+.login-card .spinner { margin: 0 auto; }
+
+/* ---- inline error panel ---- */
+.load-error {
+  text-align: center; padding: 2.4rem 1.5rem; color: var(--muted);
+}
+.load-error .ico { width: 30px; height: 30px; color: #b61f26; }
+.load-error h3 { margin: .5rem 0 .3rem; color: var(--ink); font-size: 1rem; }
+.load-error p { margin: 0 0 1rem; font-size: .89rem; }
+
+/* active nav item is set by the router, not by a page reload */
+.side-nav a { cursor: pointer; }

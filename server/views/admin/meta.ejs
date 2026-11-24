@@ -1,0 +1,299 @@
+<%
+  const hasToken  = !!cfg.meta_page_token;
+  const hasSecret = !!cfg.meta_app_secret;
+  const ready = hasToken && hasSecret && cfg.meta_page_id;
+%>
+<%- include("_head", {
+  title: "Meta lead ads",
+  subtitle: "Bring Facebook and Instagram lead-form enquiries straight into the pipeline",
+  nav: "meta"
+}) %>
+
+<div class="stats">
+  <div class="stat <%= ready ? "" : "stat--danger" %>">
+    <span class="ico-box"><%- icon(ready ? "check" : "alert") %></span>
+    <span class="txt">
+      <b style="font-size:1.05rem;"><%= ready ? "Configured" : "Not configured" %></b>
+      <span class="cap"><%= ready ? "Credentials saved" : "Add your credentials below" %></span>
+    </span>
+  </div>
+  <a class="stat" href="/admin/leads?source=facebook">
+    <span class="ico-box"><%- icon("users") %></span>
+    <span class="txt"><b><%= stats.total %></b><span class="cap">Leads from Meta</span></span>
+  </a>
+  <div class="stat">
+    <span class="ico-box"><%- icon("calendar") %></span>
+    <span class="txt"><b><%= stats.week %></b><span class="cap">In the last 7 days</span></span>
+  </div>
+  <div class="stat">
+    <span class="ico-box"><%- icon("clock") %></span>
+    <span class="txt">
+      <b style="font-size:1.05rem;"><%= cfg.meta_last_sync ? ago(cfg.meta_last_sync) : "Never" %></b>
+      <span class="cap">Last sync</span>
+    </span>
+  </div>
+  <div class="stat">
+    <span class="ico-box"><%- icon("chat") %></span>
+    <span class="txt">
+      <b style="font-size:1.05rem;"><%= cfg.meta_last_webhook ? ago(cfg.meta_last_webhook) : "Never" %></b>
+      <span class="cap">Last webhook</span>
+    </span>
+  </div>
+</div>
+
+<% if (result) { %>
+<div class="flash <%= result.ok ? "" : "flash--err" %>" style="display:block;">
+  <div style="display:flex; align-items:center; gap:.6rem;">
+    <%- icon(result.ok ? "check" : "alert") %><span><%= result.title %></span>
+  </div>
+  <% if (result.lines && result.lines.length) { %>
+  <ul style="margin:.6rem 0 0 1.6rem; font-weight:500;">
+    <% result.lines.forEach((l) => { %><li><%= l %></li><% }) %>
+  </ul>
+  <% } %>
+</div>
+<% } %>
+
+<div class="cols">
+  <div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Credentials</h2>
+        <span class="hint">From your Meta app and Facebook Page</span>
+      </div>
+      <form method="post" action="/admin/integrations/meta/config">
+        <div class="form-section">
+          <div class="stack">
+            <div class="grid-2">
+              <label class="field">
+                <span class="lbl">App ID</span>
+                <input type="text" name="meta_app_id" value="<%= cfg.meta_app_id || "" %>" placeholder="1234567890123456">
+              </label>
+              <label class="field">
+                <span class="lbl">App Secret <span class="hint">required — signs every webhook</span></span>
+                <input type="text" name="meta_app_secret" value="<%= mask(cfg.meta_app_secret) %>"
+                       placeholder="Paste to set" autocomplete="off">
+              </label>
+            </div>
+            <div class="grid-2">
+              <label class="field">
+                <span class="lbl">Facebook Page ID</span>
+                <input type="text" name="meta_page_id" value="<%= cfg.meta_page_id || "" %>" placeholder="Your Visbot Page ID">
+              </label>
+              <label class="field">
+                <span class="lbl">Page access token <span class="hint">needs the leads_retrieval permission</span></span>
+                <input type="text" name="meta_page_token" value="<%= mask(cfg.meta_page_token) %>"
+                       placeholder="Paste to set" autocomplete="off">
+              </label>
+            </div>
+            <div class="grid-2">
+              <label class="field">
+                <span class="lbl">Lead form IDs <span class="hint">optional — leave empty to sync every form on the Page</span></span>
+                <input type="text" name="meta_form_ids" value="<%= cfg.meta_form_ids || "" %>" placeholder="comma separated">
+              </label>
+              <label class="field">
+                <span class="lbl">Graph API version</span>
+                <input type="text" name="meta_api_version" value="<%= cfg.meta_api_version %>">
+              </label>
+            </div>
+            <label class="field">
+              <span class="lbl">Webhook verify token <span class="hint">paste this into Meta when subscribing</span></span>
+              <input type="text" name="meta_verify_token" value="<%= cfg.meta_verify_token || "" %>">
+            </label>
+            <p class="muted" style="margin:0; font-size:.82rem;">
+              The secret and token are stored in your own PostgreSQL database in plain text and are never shown in full again
+              — only the last six characters. Leave a masked field untouched to keep the saved value.
+            </p>
+          </div>
+        </div>
+        <div class="form-foot">
+          <button class="btn" type="submit"><%- icon("check") %>Save credentials</button>
+          <span class="spacer"></span>
+          <button class="btn btn--ghost" type="submit" formaction="/admin/integrations/meta/regenerate-token"
+                  formnovalidate>New verify token</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Bring leads in now</h2>
+        <span class="hint">Works without a public URL</span>
+      </div>
+      <div class="panel-body">
+        <div class="stack">
+          <form method="post" action="/admin/integrations/meta/test">
+            <button class="btn btn--ghost" type="submit"><%- icon("globe") %>Test connection &amp; list lead forms</button>
+          </form>
+
+          <form method="post" action="/admin/integrations/meta/sync" class="inline-form">
+            <label class="field" style="max-width:150px;">
+              <span class="lbl">Fetch last</span>
+              <select name="days">
+                <option value="7">7 days</option>
+                <option value="30" selected>30 days</option>
+                <option value="90">90 days</option>
+                <option value="365">1 year</option>
+              </select>
+            </label>
+            <button class="btn" type="submit"><%- icon("download") %>Sync leads from Meta</button>
+          </form>
+
+          <hr class="rule">
+
+          <form method="post" action="/admin/integrations/meta/import" enctype="multipart/form-data" class="inline-form">
+            <label class="field" style="flex:1 1 240px;">
+              <span class="lbl">Or import a lead export <span class="hint">CSV from Ads Manager or Business Suite</span></span>
+              <input type="file" name="csv" accept=".csv,text/csv,text/plain,.tsv">
+            </label>
+            <button class="btn btn--ghost" type="submit"><%- icon("box") %>Import file</button>
+          </form>
+          <p class="muted" style="margin:0; font-size:.82rem;">
+            Every route de-duplicates on Meta's own lead id, so importing the same file twice,
+            or syncing after a webhook already delivered a lead, never creates a duplicate.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Set up the live webhook</h2>
+        <span class="hint">So leads arrive within seconds</span>
+      </div>
+      <div class="panel-body">
+        <% if (isLocal) { %>
+        <div class="callout callout--warn">
+          <%- icon("alert") %>
+          <div>
+            <b>This server is on localhost, which Meta cannot reach.</b>
+            Use <b>Sync leads from Meta</b> above for now. To receive live webhooks, either deploy the
+            portal to a public HTTPS address, or expose this machine temporarily with a tunnel, for example
+            <code>cloudflared tunnel --url http://localhost:8000</code> or <code>ngrok http 8000</code>,
+            and use the HTTPS address it prints in place of the URL below.
+          </div>
+        </div>
+        <% } %>
+
+        <ol class="steps">
+          <li>
+            <b>Create a Meta app</b> at developers.facebook.com → My Apps → Create App → type
+            <b>Business</b>. Add the <b>Webhooks</b> and <b>Facebook Login for Business</b> products.
+          </li>
+          <li>
+            <b>Get a Page access token</b> with the permissions
+            <code>leads_retrieval</code>, <code>pages_show_list</code>,
+            <code>pages_read_engagement</code> and <code>pages_manage_metadata</code>,
+            for the Visbot Page. Paste it above together with the App Secret and Page ID.
+          </li>
+          <li>
+            <b>Subscribe the webhook.</b> In your app → Webhooks → <b>Page</b>, use:
+            <div class="kv-code">
+              <span>Callback URL</span><code><%= webhookUrl %></code>
+              <span>Verify token</span><code><%= cfg.meta_verify_token %></code>
+            </div>
+            Then subscribe to the <code>leadgen</code> field.
+          </li>
+          <li>
+            <b>Connect the Page to the app</b> so deliveries actually start — this is the step people
+            usually miss. It is a one-off Graph API call with your Page token:
+            <div class="code-block"><code>POST https://graph.facebook.com/<%= cfg.meta_api_version %>/<%= cfg.meta_page_id || "{PAGE_ID}" %>/subscribed_apps
+  ?subscribed_fields=leadgen
+  &amp;access_token={PAGE_ACCESS_TOKEN}</code></div>
+          </li>
+          <li>
+            <b>Test it.</b> Use Meta's Lead Ads Testing Tool to submit a test lead, then refresh
+            <a href="/admin/leads">All leads</a>. The delivery log below records every attempt,
+            successful or not.
+          </li>
+        </ol>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Status</h2></div>
+      <div class="panel-body">
+        <dl class="kv">
+          <dt>App Secret</dt>
+          <dd><% if (hasSecret) { %><span class="chip chip--ok">Saved</span><% } else { %><span class="chip chip--warn">Missing</span><% } %></dd>
+          <dt>Page token</dt>
+          <dd><% if (hasToken) { %><span class="chip chip--ok">Saved</span><% } else { %><span class="chip chip--warn">Missing</span><% } %></dd>
+          <dt>Page ID</dt>
+          <dd><%= cfg.meta_page_id || "—" %></dd>
+          <dt>Forms</dt>
+          <dd><%= cfg.meta_form_ids || "All forms on the Page" %></dd>
+          <dt>API version</dt>
+          <dd><%= cfg.meta_api_version %></dd>
+          <dt>Webhook URL</dt>
+          <dd style="font-size:.8rem;"><%= webhookUrl %></dd>
+        </dl>
+      </div>
+    </section>
+
+    <% if (campaigns.length) { %>
+    <section class="panel">
+      <div class="panel-head"><h2>Leads by campaign</h2></div>
+      <div class="panel-body">
+        <% const maxC = Math.max(1, ...campaigns.map((c) => c.n)); %>
+        <div class="bars">
+          <% campaigns.forEach((c) => { %>
+          <div class="bar-row">
+            <a href="/admin/leads?q=<%= encodeURIComponent(c.name) %>"><%= c.name %></a>
+            <span class="bar"><i style="width: <%= Math.round((c.n / maxC) * 100) %>%"></i></span>
+            <span class="n"><%= c.n %></span>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+    <% } %>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Delivery log</h2>
+        <span class="chip chip--muted"><%= logs.length %></span>
+      </div>
+      <div class="panel-body">
+        <% if (!logs.length) { %>
+          <p class="muted" style="margin:0;">Nothing logged yet. Connection tests, syncs, imports and webhook deliveries all appear here.</p>
+        <% } else { %>
+        <ol class="timeline">
+          <% logs.forEach((g) => { %>
+          <li class="tl-item tl-<%= g.status === "error" ? "status" : g.status === "warn" ? "followup" : "call" %>">
+            <span class="tl-dot"><%- icon(g.status === "error" ? "alert" : g.status === "warn" ? "alert" : "check") %></span>
+            <div class="tl-body">
+              <p><b><%= g.event %></b><% if (g.detail) { %> — <%= g.detail %><% } %></p>
+              <time title="<%= fmtDateTime(g.created_at) %>"><%= ago(g.created_at) %></time>
+            </div>
+          </li>
+          <% }) %>
+        </ol>
+        <% } %>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>How fields are matched</h2></div>
+      <div class="panel-body">
+        <p class="muted" style="margin:0 0 .7rem; font-size:.86rem;">
+          Standard lead-form questions map automatically:
+        </p>
+        <dl class="kv" style="font-size:.84rem;">
+          <dt>Name</dt><dd>full_name, or first + last name</dd>
+          <dt>Phone</dt><dd>phone_number</dd>
+          <dt>Email</dt><dd>email</dd>
+          <dt>City / State</dt><dd>city, state or province</dd>
+          <dt>Company</dt><dd>company_name</dd>
+          <dt>Interested in</dt><dd>any custom question mentioning machine, product, requirement or enquiry</dd>
+        </dl>
+        <p class="muted" style="margin:.7rem 0 0; font-size:.82rem;">
+          Any other answer is kept in the lead's message with its question, so nothing a customer typed is lost.
+        </p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<%- include("_foot") %>
