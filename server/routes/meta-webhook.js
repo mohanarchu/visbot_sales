@@ -3,6 +3,7 @@
 const express = require("express");
 const router = express.Router();
 const meta = require("../meta");
+const whatsapp = require("../whatsapp");
 
 // Verification handshake: Meta calls this once when you subscribe the webhook.
 router.get("/webhook", async (req, res) => {
@@ -63,14 +64,37 @@ router.post("/webhook", express.raw({ type: "*/*", limit: "1mb" }), async (req, 
     }
 
     const ids = [];
+    const chats = [];
     for (const entry of payload.entry || []) {
       for (const change of entry.changes || []) {
-        if (change.field !== "leadgen") continue;
         const v = change.value || {};
-        if (v.leadgen_id) ids.push(String(v.leadgen_id));
+        if (change.field === "leadgen") {
+          if (v.leadgen_id) ids.push(String(v.leadgen_id));
+        } else if (change.field === "messages") {
+          chats.push(v);
+        }
       }
     }
-    if (!ids.length) return meta.log("webhook", "ok", "Delivery contained no leadgen entries.");
+
+    // WhatsApp first: it needs nothing from the Graph API, so a missing Page
+    // token must not hold it up.
+    for (const value of chats) {
+      try {
+        const t = await whatsapp.handleChange(value, "webhook");
+        if (t.created || t.appended || t.duplicates || t.failed) {
+          await meta.log("whatsapp", t.failed ? "warn" : "ok", whatsapp.summarise(t));
+        }
+      } catch (e) {
+        await meta.log("whatsapp", "error", e.message);
+      }
+    }
+
+    if (!ids.length) {
+      if (!chats.length) {
+        return meta.log("webhook", "ok", "Delivery contained no leadgen or message entries.");
+      }
+      return;
+    }
 
     if (!cfg.meta_page_token) {
       return meta.log("webhook", "error",

@@ -37,3 +37,23 @@ CREATE TABLE IF NOT EXISTS integration_log (
 );
 
 CREATE INDEX IF NOT EXISTS integration_log_created_idx ON integration_log (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- Incoming WhatsApp Cloud API messages.
+--
+-- One row per message id. Meta retries any delivery it does not get a fast 200
+-- for, so the id is the guard against the same message becoming two leads.
+-- lead_id is the lead it was recorded against, and stays NULL only while a
+-- delivery is still being processed.
+CREATE TABLE IF NOT EXISTS whatsapp_messages (
+  wamid TEXT PRIMARY KEY,
+  lead_id INT REFERENCES leads (id) ON DELETE SET NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS whatsapp_messages_lead_idx ON whatsapp_messages (lead_id);
+
+-- Finding the open lead for a WhatsApp number: the last ten digits, so
+-- +91 98765 43210 and 919876543210 are one person.
+CREATE INDEX IF NOT EXISTS leads_phone_tail_idx
+  ON leads (right(regexp_replace(coalesce(phone,''), '\D', '', 'g'), 10));

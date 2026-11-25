@@ -104,7 +104,15 @@ budget. Without a payment method, messaging stops after the free allowance.
 
 ### 7. The webhook
 
-App dashboard → **WhatsApp → Configuration** → Webhook → *Edit*:
+> **Not built yet.** `/api/whatsapp/webhook` returns **404** today. The only
+> webhook on the server is the Meta **lead ads** one,
+> `https://backend.visbot.in/api/meta/webhook`, and it acts on the `leadgen`
+> field only: point WhatsApp at it and the handshake passes, the signature is
+> checked — and then every message is dropped with "Delivery contained no
+> leadgen entries" in the integration log. Finish steps 1–6, and the endpoint
+> below gets built to match the credentials you end up with.
+
+Once it exists: App dashboard → **WhatsApp → Configuration** → Webhook → *Edit*:
 
 * **Callback URL:** `https://backend.visbot.in/api/whatsapp/webhook`
 * **Verify token:** the one shown on the admin panel's WhatsApp page
@@ -112,8 +120,8 @@ App dashboard → **WhatsApp → Configuration** → Webhook → *Edit*:
 Press *Verify and save*. Then under **Webhook fields**, subscribe to
 **`messages`**. That one field carries incoming messages and the ad referral.
 
-The callback URL needs no server work — `backend.visbot.in` already proxies
-every path to the backend, and the endpoint refuses anything unsigned.
+No nginx work is needed for it — `backend.visbot.in` already proxies every path
+to the backend on :9001, which is how the lead-ads webhook is reachable.
 
 ### 8. Point the ads at the new number
 
