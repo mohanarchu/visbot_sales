@@ -8,6 +8,8 @@ const U = require("../users");
 const ST = require("../states");
 const meta = require("../meta");
 const F = require("../format");
+const { pageOf, countOf } = require("../paging");
+const R = require("../referrals");
 const {
   upload, listImages, linesToFeatures, linesToSpecs, linesToPhones,
   pickImage, intOr0, trim,
@@ -41,7 +43,7 @@ function recordFailure(ip) {
 }
 
 const wrongPassword = (res, left) => fail(res, 401,
-  "Wrong mobile number, email address or password." +
+  "Wrong username or password." +
   (left <= 3 && left > 0 ? ` ${left} attempt${left === 1 ? "" : "s"} left.` : ""));
 
 // ---------- session ----------
@@ -200,6 +202,8 @@ router.get("/users/assignable", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.use("/referrers", require("./admin-referrers"));
+
 router.use("/users", requireArea("users"));
 
 router.get("/users", async (req, res, next) => {
@@ -213,9 +217,12 @@ router.get("/users", async (req, res, next) => {
       if (u.active) a[u.role] = (a[u.role] || 0) + 1;
       return a;
     }, {});
+    const p = pageOf(req, rows.length);
+    const shown = p.all ? rows : rows.slice(p.offset, p.offset + p.per);
     // One query for everybody's states, rather than one per person.
-    const byUser = await ST.forUsers(rows.map((u) => u.id));
-    ok(res, rows.map((u) => Object.assign(U.publicUser(u), { states: byUser[u.id] || [] })), {
+    const byUser = await ST.forUsers(shown.map((u) => u.id));
+    ok(res, shown.map((u) => Object.assign(U.publicUser(u), { states: byUser[u.id] || [] })), {
+      meta: p.meta,
       role_counts: counts,
       env_admin: U.envAdminName(),
     });
@@ -334,6 +341,35 @@ router.delete("/users/:id(\\d+)", async (req, res, next) => {
 
 router.all("/users/:id", (req, res) => fail(res, 404, "User not found."));
 
+// ---------- when a lead arrived ----------
+// Dates throughout are the business's own day, not the server's. The server
+// runs on UTC, which is 5.5 hours behind: without this, every lead between
+// midnight and 5.30am would be filed under the previous day.
+const TZ = "Asia/Kolkata";
+const LOCAL_DATE = `(l.created_at AT TIME ZONE '${TZ}')::date`;
+const TODAY = `(now() AT TIME ZONE '${TZ}')::date`;
+
+const PERIODS = ["today", "yesterday", "7d", "30d", "month", "custom"];
+const isDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || "");
+
+function periodClause(f, params) {
+  // Explicit dates win: the dropdown is a shortcut, not a restriction.
+  if (f.from || f.to) {
+    const bits = [];
+    if (f.from) { params.push(f.from); bits.push(`${LOCAL_DATE} >= $${params.length}::date`); }
+    if (f.to) { params.push(f.to); bits.push(`${LOCAL_DATE} <= $${params.length}::date`); }
+    return bits.join(" AND ");
+  }
+  switch (f.period) {
+    case "today":     return `${LOCAL_DATE} = ${TODAY}`;
+    case "yesterday": return `${LOCAL_DATE} = ${TODAY} - 1`;
+    case "7d":        return `${LOCAL_DATE} > ${TODAY} - 7`;
+    case "30d":       return `${LOCAL_DATE} > ${TODAY} - 30`;
+    case "month":     return `date_trunc('month', ${LOCAL_DATE}) = date_trunc('month', ${TODAY})`;
+    default:          return "";
+  }
+}
+
 // ---------- lead dashboard ----------
 router.get("/dashboard", async (req, res, next) => {
   try {
@@ -342,6 +378,8 @@ router.get("/dashboard", async (req, res, next) => {
          count(*)::int AS total,
          count(*) FILTER (WHERE status = 'new')::int AS new_count,
          count(*) FILTER (WHERE status NOT IN ('won','lost'))::int AS open_count,
+         count(*) FILTER (WHERE (created_at AT TIME ZONE 'Asia/Kolkata')::date
+                            = (now() AT TIME ZONE 'Asia/Kolkata')::date)::int AS today_count,
          count(*) FILTER (WHERE created_at >= current_date - interval '7 days')::int AS week_count,
          count(*) FILTER (WHERE status = 'won')::int AS won_count,
          count(*) FILTER (WHERE status = 'lost')::int AS lost_count,
@@ -375,13 +413,42 @@ router.get("/dashboard", async (req, res, next) => {
               count(*) FILTER (WHERE created_at >= current_date - interval '7 days')::int AS week_count
        FROM service_requests`)).rows[0];
 
-    ok(res, { stats, byStatus, bySource, topInterest, recent, dueSoon, service });
+    // Last 14 days, one row per day including the days nobody enquired —
+    // a flat stretch is information, and a chart with the gaps closed up lies
+    // about how busy a week was.
+    const daily = (await db.query(
+      `WITH days AS (
+         SELECT generate_series(
+           (now() AT TIME ZONE 'Asia/Kolkata')::date - 13,
+           (now() AT TIME ZONE 'Asia/Kolkata')::date,
+           interval '1 day')::date AS d)
+       SELECT days.d AS day,
+              count(l.id)::int AS n,
+              count(l.id) FILTER (WHERE l.status = 'won')::int AS won
+         FROM days
+         LEFT JOIN leads l
+           ON (l.created_at AT TIME ZONE 'Asia/Kolkata')::date = days.d
+        GROUP BY days.d ORDER BY days.d`)).rows;
+
+    const monthly = (await db.query(
+      `WITH months AS (
+         SELECT generate_series(
+           date_trunc('month', (now() AT TIME ZONE 'Asia/Kolkata')::date) - interval '5 months',
+           date_trunc('month', (now() AT TIME ZONE 'Asia/Kolkata')::date),
+           interval '1 month')::date AS m)
+       SELECT months.m AS month,
+              count(l.id)::int AS n,
+              count(l.id) FILTER (WHERE l.status = 'won')::int AS won
+         FROM months
+         LEFT JOIN leads l
+           ON date_trunc('month', (l.created_at AT TIME ZONE 'Asia/Kolkata')::date) = months.m
+        GROUP BY months.m ORDER BY months.m`)).rows;
+
+    ok(res, { stats, byStatus, bySource, topInterest, recent, dueSoon, service, daily, monthly });
   } catch (e) { next(e); }
 });
 
 // ---------- leads ----------
-const PER_PAGE = 25;
-
 router.get("/leads", async (req, res, next) => {
   try {
     const f = {
@@ -393,6 +460,9 @@ router.get("/leads", async (req, res, next) => {
         : (/^\d+$/.test(req.query.state || "") ? req.query.state : ""),
       due: req.query.due === "1" || req.query.due === "true",
       open: req.query.open === "1" || req.query.open === "true",
+      period: PERIODS.includes(req.query.period) ? req.query.period : "",
+      from: isDate(req.query.from) ? req.query.from : "",
+      to: isDate(req.query.to) ? req.query.to : "",
     };
     // Both queries below read FROM leads l, and the rows query also joins the
     // states table — which has a `name` of its own — so every column here is
@@ -421,27 +491,34 @@ router.get("/leads", async (req, res, next) => {
     if (f.due) where.push("l.next_followup IS NOT NULL AND l.next_followup <= current_date AND l.status NOT IN ('won','lost')");
     if (f.open) where.push("l.status NOT IN ('won','lost')");
 
+    // When the lead arrived. Dates are compared in Indian time, not the
+    // server's: a lead that came in at 2am in Coimbatore is 8.30pm UTC the day
+    // before, and "Today" has to mean today in Coimbatore.
+    const dayClause = periodClause(f, params);
+    if (dayClause) where.push(dayClause);
+
     const clause = where.length ? "WHERE " + where.join(" AND ") : "";
     const total = parseInt((await db.query(
       `SELECT count(*) FROM leads l ${clause}`, params)).rows[0].count, 10);
-    const pages = Math.max(1, Math.ceil(total / PER_PAGE));
-    const page = Math.min(Math.max(1, parseInt(req.query.page, 10) || 1), pages);
-    const offset = (page - 1) * PER_PAGE;
+    const p = pageOf(req, total);
 
     const rows = (await db.query(
       `SELECT l.*, s.name AS state_name, s.code AS state_code,
+              rf.name AS referrer_name, rf.phone AS referrer_phone,
               (SELECT count(*) FROM lead_notes n WHERE n.lead_id = l.id)::int AS note_count
-       FROM leads l LEFT JOIN states s ON s.id = l.state_id ${clause}
+       FROM leads l
+       LEFT JOIN states s ON s.id = l.state_id
+       LEFT JOIN referrers rf ON rf.id = l.referrer_id ${clause}
        ORDER BY CASE WHEN l.status = 'new' THEN 0 ELSE 1 END,
                 CASE l.priority WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
                 l.created_at DESC
-       LIMIT ${PER_PAGE} OFFSET ${offset}`, params)).rows;
+       ${p.sql}`, params)).rows;
 
     const tabCounts = (await db.query("SELECT status, count(*)::int AS n FROM leads GROUP BY status")).rows
       .reduce((a, r) => (a[r.status] = r.n, a), {});
 
     ok(res, rows, {
-      meta: { total, page, pages, per_page: PER_PAGE },
+      meta: p.meta,
       tab_counts: tabCounts,
       all_count: Object.values(tabCounts).reduce((a, b) => a + b, 0),
     });
@@ -488,7 +565,11 @@ router.get("/leads/export.csv", async (req, res, next) => {
 
 router.get("/leads/:id", async (req, res, next) => {
   try {
-    const r = await db.query("SELECT * FROM leads WHERE id=$1", [req.params.id]);
+    const r = await db.query(
+      `SELECT l.*, rf.name AS referrer_name, rf.phone AS referrer_phone,
+              rf.active AS referrer_active
+       FROM leads l LEFT JOIN referrers rf ON rf.id = l.referrer_id
+       WHERE l.id = $1`, [req.params.id]);
     if (!r.rows.length) return fail(res, 404, "Lead not found.");
     const notes = (await db.query(
       "SELECT * FROM lead_notes WHERE lead_id=$1 ORDER BY created_at DESC, id DESC",
@@ -509,7 +590,7 @@ async function assignment(b) {
   return u ? { id: u.id, owner: u.name } : { id: null, owner: trim(b.owner) };
 }
 
-function leadValues(b, a) {
+function leadValues(b, a, ref) {
   return [
     (b.name || "").trim(),
     trim(b.phone), trim(b.email), trim(b.company), trim(b.city), trim(b.state),
@@ -518,17 +599,25 @@ function leadValues(b, a) {
     M.isStatus(b.status) ? b.status : "new",
     M.isPriority(b.priority) ? b.priority : "medium",
     a.owner, trim(b.next_followup), a.id,
+    // Null on anything that is not a referral, so a lead moved off "Referral"
+    // stops owing a commission.
+    ref.referrer_id, ref.kind, ref.value,
   ];
 }
 
 router.post("/leads", async (req, res, next) => {
   try {
-    const vals = leadValues(req.body, await assignment(req.body));
-    if (!vals[0]) return fail(res, 400, "A lead needs at least a name.");
+    // The name is checked before the referrer is created, so a lead rejected
+    // for having no name cannot leave a stray referrer behind.
+    if (!(req.body.name || "").trim()) return fail(res, 400, "A lead needs at least a name.");
+    const ref = await R.fieldsFor(req.body);
+    if (!ref.ok) return fail(res, 400, ref.message);
+    const vals = leadValues(req.body, await assignment(req.body), ref);
     const r = await db.query(
       `INSERT INTO leads (name, phone, email, company, city, state, interest, message,
-         source, status, priority, owner, next_followup, owner_user_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING id`, vals);
+         source, status, priority, owner, next_followup, owner_user_id,
+         referrer_id, referral_kind, referral_value)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING id`, vals);
     await db.query(
       "INSERT INTO lead_notes (lead_id, note, kind, user_id, author) VALUES ($1,$2,'created',$3,$4)",
       [r.rows[0].id, "Lead added manually in the admin panel.", req.user.id, req.user.name]);
@@ -538,12 +627,16 @@ router.post("/leads", async (req, res, next) => {
 
 router.put("/leads/:id", async (req, res, next) => {
   try {
-    const vals = leadValues(req.body, await assignment(req.body));
-    if (!vals[0]) return fail(res, 400, "A lead needs at least a name.");
+    if (!(req.body.name || "").trim()) return fail(res, 400, "A lead needs at least a name.");
+    const ref = await R.fieldsFor(req.body);
+    if (!ref.ok) return fail(res, 400, ref.message);
+    const vals = leadValues(req.body, await assignment(req.body), ref);
     const r = await db.query(
       `UPDATE leads SET name=$1, phone=$2, email=$3, company=$4, city=$5, state=$6,
          interest=$7, message=$8, source=$9, status=$10, priority=$11, owner=$12,
-         next_followup=$13, owner_user_id=$14, updated_at=now() WHERE id=$15 RETURNING id`,
+         next_followup=$13, owner_user_id=$14,
+         referrer_id=$15, referral_kind=$16, referral_value=$17,
+         updated_at=now() WHERE id=$18 RETURNING id`,
       [...vals, req.params.id]);
     if (!r.rows.length) return fail(res, 404, "Lead not found.");
     ok(res, { id: r.rows[0].id }, { message: `Lead “${vals[0]}” saved.` });
@@ -643,18 +736,17 @@ router.get("/service", async (req, res, next) => {
 
     const total = parseInt((await db.query(
       `SELECT count(*) FROM service_requests ${clause}`, params)).rows[0].count, 10);
-    const pages = Math.max(1, Math.ceil(total / PER_PAGE));
-    const page = Math.min(Math.max(1, parseInt(req.query.page, 10) || 1), pages);
+    const p = pageOf(req, total);
 
     const rows = (await db.query(
       `SELECT * FROM service_requests ${clause}
        ORDER BY created_at DESC, id DESC
-       LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}`, params)).rows;
+       ${p.sql}`, params)).rows;
 
     const allCount = parseInt((await db.query(
       "SELECT count(*) FROM service_requests")).rows[0].count, 10);
 
-    ok(res, rows, { meta: { total, page, pages, per_page: PER_PAGE }, all_count: allCount });
+    ok(res, rows, { meta: p.meta, all_count: allCount });
   } catch (e) { next(e); }
 });
 
@@ -680,11 +772,12 @@ router.put("/service/settings", async (req, res, next) => {
 // /service/types can never be read as a request id whatever the route order.
 router.get("/service/types", async (req, res, next) => {
   try {
+    const p = pageOf(req, await countOf("SELECT count(*) FROM service_types"));
     const rows = (await db.query(
       `SELECT t.id, t.name, t.description,
               (SELECT count(*) FROM service_visits v WHERE v.type_id = t.id)::int AS used
-       FROM service_types t ORDER BY t.name`)).rows;
-    ok(res, rows);
+       FROM service_types t ORDER BY t.name ${p.sql}`)).rows;
+    ok(res, rows, { meta: p.meta });
   } catch (e) { next(e); }
 });
 
@@ -762,8 +855,7 @@ router.get("/service/visits", async (req, res, next) => {
 
     const total = parseInt((await db.query(
       `SELECT count(*) FROM service_visits v ${clause}`, params)).rows[0].count, 10);
-    const pages = Math.max(1, Math.ceil(total / PER_PAGE));
-    const page = Math.min(Math.max(1, parseInt(req.query.page, 10) || 1), pages);
+    const p = pageOf(req, total);
 
     // Looking at what is due puts the most urgent first; everywhere else the
     // newest service is what you want to see.
@@ -776,7 +868,7 @@ router.get("/service/visits", async (req, res, next) => {
               (SELECT count(*) FROM service_reviews r WHERE r.visit_id = v.id)::int AS review_count
        FROM service_visits v LEFT JOIN service_types t ON t.id = v.type_id ${clause}
        ORDER BY ${order}
-       LIMIT ${PER_PAGE} OFFSET ${(page - 1) * PER_PAGE}`, params)).rows;
+       ${p.sql}`, params)).rows;
 
     const stats = (await db.query(
       `SELECT count(*)::int AS total,
@@ -787,7 +879,7 @@ router.get("/service/visits", async (req, res, next) => {
     const types = (await db.query(
       "SELECT id, name FROM service_types ORDER BY name")).rows;
 
-    ok(res, rows, { meta: { total, page, pages, per_page: PER_PAGE }, stats, types });
+    ok(res, rows, { meta: p.meta, stats, types });
   } catch (e) { next(e); }
 });
 
@@ -880,13 +972,16 @@ router.get("/service/reviews", async (req, res, next) => {
     }
     const clause = where.length ? "WHERE " + where.join(" AND ") : "";
 
+    const p = pageOf(req, await countOf(
+      `SELECT count(*) FROM service_reviews r ${clause}`, params));
+
     const rows = (await db.query(
       `SELECT r.*, v.service_date, v.reference AS visit_reference,
               u.name AS collected_by
        FROM service_reviews r
        LEFT JOIN service_visits v ON v.id = r.visit_id
        LEFT JOIN users u ON u.id = r.user_id ${clause}
-       ORDER BY r.published, r.created_at DESC`, params)).rows;
+       ORDER BY r.published, r.created_at DESC ${p.sql}`, params)).rows;
 
     const counts = (await db.query(
       `SELECT count(*)::int AS total,
@@ -895,7 +990,7 @@ router.get("/service/reviews", async (req, res, next) => {
               round(avg(rating) FILTER (WHERE published), 1) AS avg_published
        FROM service_reviews`)).rows[0];
 
-    ok(res, rows, { counts });
+    ok(res, rows, { meta: p.meta, counts });
   } catch (e) { next(e); }
 });
 
@@ -1019,9 +1114,10 @@ router.get("/website", async (req, res, next) => {
 // ---------- categories ----------
 router.get("/categories", async (req, res, next) => {
   try {
+    const p = pageOf(req, await countOf("SELECT count(*) FROM categories"));
     ok(res, (await db.query(
       `SELECT c.*, (SELECT count(*) FROM products p WHERE p.category_id = c.id)::int AS product_count
-       FROM categories c ORDER BY c.sort_order, c.id`)).rows);
+       FROM categories c ORDER BY c.sort_order, c.id ${p.sql}`)).rows, { meta: p.meta });
   } catch (e) { next(e); }
 });
 router.get("/categories/:id", async (req, res, next) => {
@@ -1065,10 +1161,11 @@ router.delete("/categories/:id", async (req, res, next) => {
 // ---------- products ----------
 router.get("/products", async (req, res, next) => {
   try {
+    const pg = pageOf(req, await countOf("SELECT count(*) FROM products"));
     ok(res, (await db.query(
       `SELECT p.*, c.name AS category_name FROM products p
        LEFT JOIN categories c ON c.id = p.category_id
-       ORDER BY c.sort_order NULLS LAST, p.sort_order, p.id`)).rows);
+       ORDER BY c.sort_order NULLS LAST, p.sort_order, p.id ${pg.sql}`)).rows, { meta: pg.meta });
   } catch (e) { next(e); }
 });
 router.get("/products/:id", async (req, res, next) => {
@@ -1126,9 +1223,11 @@ router.delete("/products/:id", async (req, res, next) => {
 // ---------- spare groups and spares ----------
 router.get("/spares", async (req, res, next) => {
   try {
+    const p = pageOf(req, await countOf("SELECT count(*) FROM spares"));
     const groups = (await db.query("SELECT * FROM spare_groups ORDER BY sort_order, id")).rows;
-    const spares = (await db.query("SELECT * FROM spares ORDER BY sort_order, id")).rows;
-    ok(res, { groups, spares });
+    const spares = (await db.query(
+      `SELECT * FROM spares ORDER BY sort_order, id ${p.sql}`)).rows;
+    ok(res, { groups, spares }, { meta: p.meta });
   } catch (e) { next(e); }
 });
 router.get("/spares/:id", async (req, res, next) => {
@@ -1207,7 +1306,9 @@ router.delete("/spare-groups/:id", async (req, res, next) => {
 // ---------- locations ----------
 router.get("/locations", async (req, res, next) => {
   try {
-    ok(res, (await db.query("SELECT * FROM locations ORDER BY sort_order, id")).rows);
+    const p = pageOf(req, await countOf("SELECT count(*) FROM locations"));
+    ok(res, (await db.query(
+      `SELECT * FROM locations ORDER BY sort_order, id ${p.sql}`)).rows, { meta: p.meta });
   } catch (e) { next(e); }
 });
 router.get("/locations/:id", async (req, res, next) => {
@@ -1251,7 +1352,9 @@ router.delete("/locations/:id", async (req, res, next) => {
 // ---------- regional contacts ----------
 router.get("/regions", async (req, res, next) => {
   try {
-    ok(res, (await db.query("SELECT * FROM regional_contacts ORDER BY sort_order, id")).rows);
+    const p = pageOf(req, await countOf("SELECT count(*) FROM regional_contacts"));
+    ok(res, (await db.query(
+      `SELECT * FROM regional_contacts ORDER BY sort_order, id ${p.sql}`)).rows, { meta: p.meta });
   } catch (e) { next(e); }
 });
 router.get("/regions/:id", async (req, res, next) => {
@@ -1305,7 +1408,7 @@ router.get("/meta", async (req, res, next) => {
        WHERE meta_campaign_name IS NOT NULL AND meta_campaign_name <> ''
        GROUP BY 1 ORDER BY n DESC LIMIT 8`)).rows;
     const logs = (await db.query(
-      "SELECT * FROM integration_log WHERE channel='meta' ORDER BY created_at DESC, id DESC LIMIT 20")).rows;
+      "SELECT * FROM integration_log WHERE channel='meta' ORDER BY created_at DESC, id DESC LIMIT 5")).rows;
 
     const proto = (req.get("x-forwarded-proto") || req.protocol || "http").split(",")[0];
     const base = (process.env.BACKEND_PUBLIC_URL || "").replace(/\/$/, "")

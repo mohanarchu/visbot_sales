@@ -99,7 +99,7 @@ router.post("/login", async (req, res, next) => {
     recordFailure(req.ip);
     const left = MAX_ATTEMPTS - failures(req.ip).length;
     res.status(401).render("admin/login", {
-      error: "Wrong mobile number, email address or password."
+      error: "Wrong username or password."
         + (left <= 3 && left > 0 ? ` ${left} attempt${left === 1 ? "" : "s"} left.` : ""),
     });
   } catch (e) { next(e); }

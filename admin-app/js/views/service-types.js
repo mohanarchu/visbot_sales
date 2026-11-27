@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import {
   h, frag, icon, table, rowActions, emptyState,
   field, input, textarea, formSection, formFoot, stack,
-  formData, toast, withBusy, confirmAction, skelTable, skelForm,
+  formData, toast, withBusy, confirmAction, pager, pageHref, skelTable, skelForm,
 } from "../ui.js";
 
 export const serviceTypesList = {
@@ -12,7 +12,7 @@ export const serviceTypesList = {
   subtitle: "The kinds of service work you can log",
   nav: "service-types",
   skeleton: () => skelTable(8),
-  load: () => api.get("/service/types"),
+  load: (ctx) => api.get("/service/types", ctx.query),
 
   render(res, ctx) {
     const rows = res.data;
@@ -58,7 +58,7 @@ export const serviceTypesList = {
           action: h("a.btn", { href: "/service/types/new" }, icon("plus"), "Add the first one"),
         });
 
-    return frag(toolbar, h("div.panel", body),
+    return frag(toolbar, h("div.panel", body, pager(res.meta, pageHref("/service/types", ctx.query))),
       h("p.muted", { style: { fontSize: ".85rem", marginTop: "1rem" },
         text: "A type that has already been used cannot be deleted, because the service records that point at it would lose their label. Rename it instead — the history follows the new name." }));
   },
@@ -71,7 +71,7 @@ export const serviceTypeForm = {
   skeleton: () => skelForm(),
   load: async (ctx) => {
     if (!ctx.params.id) return { t: null };
-    const all = await api.get("/service/types");
+    const all = await api.get("/service/types", { all: 1 });
     const t = all.data.find((x) => String(x.id) === String(ctx.params.id));
     if (!t) throw new Error("Service type not found.");
     return { t };

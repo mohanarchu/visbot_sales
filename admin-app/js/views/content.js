@@ -3,7 +3,7 @@ import {
   h, frag, icon, chip, panel, panelBody, statCard, bars, table, rowActions,
   emptyState, thumb, field, input, textarea, select, checkbox, formSection,
   formFoot, grid2, grid3, stack, formData, toast, withBusy, confirmAction,
-  skelCards, skelTable, skelForm, skelPanel,
+  pager, pageHref, skelCards, skelTable, skelForm, skelPanel,
 } from "../ui.js";
 import { imagePicker, pairsEditor, countedTextarea, linkSlug } from "../widgets.js";
 
@@ -99,9 +99,9 @@ export const categoriesList = {
   subtitle: "Sections on the Products page, in display order",
   nav: "categories",
   skeleton: () => skelTable(5),
-  load: () => api.get("/categories"),
+  load: (ctx) => api.get("/categories", ctx.query),
 
-  render({ data }, ctx) {
+  render({ data, meta }, ctx) {
     const rows = data.map((c) => h("tr",
       h("td.num", { text: String(c.sort_order) }),
       h("td", h("span.name", { text: c.name })),
@@ -116,7 +116,9 @@ export const categoriesList = {
     return frag(
       h("div.toolbar", h("span.spacer"), h("a.btn", { href: "/categories/new" }, icon("plus"), "New category")),
       h("div.panel", data.length
-        ? table({ head: ["#", "Category", "Section anchor", "Products", "Grid", { label: "Actions", right: true }], rows })
+        ? frag(
+            table({ head: ["#", "Category", "Section anchor", "Products", "Grid", { label: "Actions", right: true }], rows }),
+            pager(meta, pageHref("/categories", ctx.query)))
         : emptyState({ iconName: "layers", title: "No categories",
             text: "Categories group the machines into sections on the Products page.",
             action: h("a.btn", { href: "/categories/new" }, icon("plus"), "New category") })));
@@ -170,10 +172,11 @@ export const productsList = {
   subtitle: "Machines shown on the Products page and their detail pages",
   nav: "products",
   skeleton: () => skelTable(8),
-  load: () => api.get("/products"),
-  subtitleFrom: (res) => `${res.data.length} products on the website`,
+  load: (ctx) => api.get("/products", ctx.query),
+  subtitleFrom: (res) =>
+    `${res.meta ? res.meta.total : res.data.length} products on the website`,
 
-  render({ data }, ctx) {
+  render({ data, meta }, ctx) {
     const search = h("input", { type: "search", placeholder: "Search by name, price, slug…", "aria-label": "Search products" });
     const catSel = select("cat", [{ value: "", label: "All categories" },
       ...[...new Set(data.map((p) => p.category_name).filter(Boolean))].map((n) => ({ value: n, label: n }))], "");
@@ -219,10 +222,12 @@ export const productsList = {
       h("div.toolbar",
         h("div.search", icon("search"), search), catSel, count,
         h("a.btn.spacer", { href: "/products/new" }, icon("plus"), "New product")),
-      h("div.panel", table({
-        head: ["Photo", "Product", "Category", "Price", "Status", { label: "Actions", right: true }],
-        rows,
-      })));
+      h("div.panel",
+        table({
+          head: ["Photo", "Product", "Category", "Price", "Status", { label: "Actions", right: true }],
+          rows,
+        }),
+        pager(meta, pageHref("/products", ctx.query))));
   },
 };
 
@@ -234,7 +239,7 @@ export const productForm = {
   skeleton: () => skelForm(),
   load: async (ctx) => {
     const [cats, images, product] = await Promise.all([
-      api.get("/categories"),
+      api.get("/categories", { all: 1 }),
       api.get("/images"),
       ctx.params.id ? api.get("/products/" + ctx.params.id) : Promise.resolve(null),
     ]);
@@ -334,11 +339,11 @@ export const sparesList = {
   title: "Spares",
   nav: "spares",
   skeleton: () => frag(skelTable(4), skelTable(4)),
-  load: () => api.get("/spares"),
+  load: (ctx) => api.get("/spares", ctx.query),
   subtitleFrom: (res) =>
-    `${res.data.spares.length} spares in ${res.data.groups.length} groups on the Spares page`,
+    `${res.meta ? res.meta.total : res.data.spares.length} spares in ${res.data.groups.length} groups on the Spares page`,
 
-  render({ data }, ctx) {
+  render({ data, meta }, ctx) {
     const { groups, spares } = data;
     const byGroup = {};
     spares.forEach((s) => (byGroup[s.group_id] = byGroup[s.group_id] || []).push(s));
@@ -378,7 +383,10 @@ export const sparesList = {
         iconName: "wrench", title: "No spare groups",
         text: "Groups become the section headings on the Spares page.",
         action: h("a.btn", { href: "/spare-groups/new" }, icon("plus"), "New group"),
-      })));
+      })),
+      meta && meta.pages > 1
+        ? h("div.panel", pager(meta, pageHref("/spares", ctx.query)))
+        : null);
   },
 };
 
@@ -389,7 +397,7 @@ export const spareForm = {
   skeleton: () => skelForm(),
   load: async (ctx) => {
     const [groups, images, spare] = await Promise.all([
-      api.get("/spares"), api.get("/images"),
+      api.get("/spares", { all: 1 }), api.get("/images"),
       ctx.params.id ? api.get("/spares/" + ctx.params.id) : Promise.resolve(null),
     ]);
     return { groups: groups.data.groups, images: images.data, s: spare ? spare.data : null };
@@ -473,9 +481,9 @@ export const locationsList = {
   subtitle: "The address cards on the Contact page",
   nav: "locations",
   skeleton: () => skelTable(3),
-  load: () => api.get("/locations"),
+  load: (ctx) => api.get("/locations", ctx.query),
 
-  render({ data }, ctx) {
+  render({ data, meta }, ctx) {
     const rows = data.map((l) => h("tr",
       h("td.num", { text: String(l.sort_order) }),
       h("td", h("span.name", { text: l.title })),
@@ -494,7 +502,9 @@ export const locationsList = {
     return frag(
       h("div.toolbar", h("span.spacer"), h("a.btn", { href: "/locations/new" }, icon("plus"), "New location")),
       h("div.panel", data.length
-        ? table({ head: ["#", "Title", "Address", "Phone numbers", "Map", { label: "Actions", right: true }], rows })
+        ? frag(
+            table({ head: ["#", "Title", "Address", "Phone numbers", "Map", { label: "Actions", right: true }], rows }),
+            pager(meta, pageHref("/locations", ctx.query)))
         : emptyState({ iconName: "pin", title: "No locations",
             text: "Add the factory, experience centre or proprietor card shown on the Contact page.",
             action: h("a.btn", { href: "/locations/new" }, icon("plus"), "New location") })));
@@ -548,9 +558,9 @@ export const regionsList = {
   subtitle: "The state-wise phone table on the Contact page",
   nav: "regions",
   skeleton: () => skelTable(8),
-  load: () => api.get("/regions"),
+  load: (ctx) => api.get("/regions", ctx.query),
 
-  render({ data }, ctx) {
+  render({ data, meta }, ctx) {
     const rows = data.map((r) => h("tr",
       h("td.num", { text: String(r.sort_order) }),
       h("td", h("span.name", { text: r.region })),
@@ -562,7 +572,9 @@ export const regionsList = {
     return frag(
       h("div.toolbar", h("span.spacer"), h("a.btn", { href: "/regions/new" }, icon("plus"), "New region")),
       h("div.panel", data.length
-        ? table({ head: ["#", "Region", "Phone", { label: "Actions", right: true }], rows })
+        ? frag(
+            table({ head: ["#", "Region", "Phone", { label: "Actions", right: true }], rows }),
+            pager(meta, pageHref("/regions", ctx.query)))
         : emptyState({ iconName: "phone", title: "No regional contacts",
             text: 'These rows become the "Your regional contact" table on the Contact page.',
             action: h("a.btn", { href: "/regions/new" }, icon("plus"), "New region") })));

@@ -6,6 +6,7 @@ import { loadVocab } from "./vocab.js";
 import * as router from "./router.js";
 import { dashboard } from "./views/dashboard.js";
 import { leadsList, leadDetail, leadForm } from "./views/leads.js";
+import { referrersList, referrerDetail, referrerForm } from "./views/referrers.js";
 import {
   websiteOverview, categoriesList, categoryForm, productsList, productForm,
   sparesList, spareForm, groupForm, locationsList, locationForm,
@@ -27,6 +28,7 @@ const NAV_ALL = [
     { key: "dashboard", href: "/", label: "Dashboard", icon: "grid" },
     { key: "leads", href: "/leads", label: "All leads", icon: "users" },
     { key: "lead-new", href: "/leads/new", label: "Add a lead", icon: "plus" },
+    { key: "referrers", href: "/referrers", label: "Referrals", icon: "spark" },
   ]},
   { group: "Service", items: [
     { key: "service", href: "/service", label: "Service requests", icon: "wrench" },
@@ -64,7 +66,6 @@ function renderLogin(message) {
   document.body.className = "login-page";
   const user = input("identifier", "", {
     required: true, autofocus: true, autocomplete: "username",
-    placeholder: "98765 43210 or you@company.com",
   });
   const pass = input("password", "", { type: "password", required: true, autocomplete: "current-password" });
   const btn = h("button.btn", { type: "submit", text: "Sign in" });
@@ -76,7 +77,7 @@ function renderLogin(message) {
       h("h1", "VISBOT ", h("i", { text: "ADMIN" })),
       h("p", { text: "Sign in to manage leads and website content" })),
     errBox,
-    field({ label: "Mobile number or email", input: user }),
+    field({ label: "Username", input: user }),
     field({ label: "Password", input: pass }),
     btn,
     h("p.login-foot", { text: "Visbot Industries · Coimbatore" }));
@@ -217,6 +218,10 @@ function defineRoutes() {
   router.define("/leads/new", leadForm);
   router.define("/leads/:id", leadDetail);
   router.define("/leads/:id/edit", leadForm);
+  router.define("/referrers", referrersList);
+  router.define("/referrers/new", referrerForm);
+  router.define("/referrers/:id", referrerDetail);
+  router.define("/referrers/:id/edit", referrerForm);
 
   // Every fixed /service/… path is declared before the catch-all /service/:id,
   // or "history", "types" and the rest would be read as a request id.

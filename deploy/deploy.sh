@@ -81,13 +81,20 @@ fi
 
 npm ci --omit=dev 2>/dev/null || npm install --omit=dev
 
+# A value out of a .env file. dotenv strips surrounding quotes, so this has to
+# as well: a password containing a '#' has to be quoted in the file, and without
+# this the quotes would arrive as part of the value.
+envval() { grep -E "^$2=" "$1" | cut -d= -f2- | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"; }
+
 # Schemas use CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS, so this is
 # safe on an existing database and never drops data.
-DB_URL=$(grep -E '^DATABASE_URL=' .env | cut -d= -f2-)
+DB_URL=$(envval .env DATABASE_URL)
 # Order matters at the end: schema-users.sql adds the columns that point leads,
 # notes and reviews at a user, and schema-states.sql points users and leads at a
 # state, so both come after the tables they reach into.
-for f in schema.sql schema-leads.sql schema-meta.sql schema-service.sql schema-users.sql schema-states.sql; do
+# schema-referrals.sql comes last of all: it adds a column to leads that points
+# at the referrers table it creates.
+for f in schema.sql schema-leads.sql schema-meta.sql schema-service.sql schema-users.sql schema-states.sql schema-referrals.sql; do
   psql "$DB_URL" -v ON_ERROR_STOP=1 -q -f "$f"
   echo "applied $f"
 done

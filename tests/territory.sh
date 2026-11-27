@@ -4,8 +4,13 @@
 set -uo pipefail
 cd "$(dirname "$0")/../server"
 
-ADMIN_U=$(grep -E '^ADMIN_USER=' .env | cut -d= -f2-)
-ADMIN_P=$(grep -E '^ADMIN_PASSWORD=' .env | cut -d= -f2-)
+# A value out of a .env file. dotenv strips surrounding quotes, so this has to
+# as well: a password containing a '#' must be quoted in the file, and without
+# this the quotes arrive as part of the password.
+envval() { grep -E "^$2=" "$1" | cut -d= -f2- | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"; }
+
+ADMIN_U=$(envval .env ADMIN_USER)
+ADMIN_P=$(envval .env ADMIN_PASSWORD)
 WEB=http://127.0.0.1:9002
 APP=http://127.0.0.1:9001/api/app
 BACK=http://127.0.0.1:9001

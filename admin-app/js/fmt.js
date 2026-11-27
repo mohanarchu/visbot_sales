@@ -74,3 +74,19 @@ export function waNumber(phone) {
   if (d.length === 13 && d.startsWith("091")) return d.slice(1);
   return d.length >= 10 ? d : "";
 }
+
+// Rupees, grouped the Indian way: 2,50,000 rather than 250,000.
+export function fmtMoney(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+}
+
+// What a referral fee reads as once saved: "5%" or "₹2,500".
+export function fmtFee(kind, value) {
+  if (!kind || value === null || value === undefined || value === "") return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  if (kind === "percent") return (Math.round(n * 100) / 100) + "%";
+  return fmtMoney(n);
+}

@@ -4,7 +4,12 @@ class ClassList {
   add(...c) { c.forEach((x) => this.set.add(x)); this.sync(); }
   remove(...c) { c.forEach((x) => this.set.delete(x)); this.sync(); }
   contains(c) { return this.set.has(c); }
-  toggle(c) { this.set.has(c) ? this.set.delete(c) : this.set.add(c); this.sync(); return this.set.has(c); }
+  toggle(c, force) {
+    const on = force === undefined ? !this.set.has(c) : !!force;
+    if (on) this.set.add(c); else this.set.delete(c);
+    this.sync();
+    return on;
+  }
   sync() { this.el._class = [...this.set].join(" "); }
 }
 
@@ -31,6 +36,23 @@ class Node {
   set textContent(v) { this._text = String(v); this.children = []; }
   set innerHTML(v) { this._text = String(v).replace(/<[^>]*>/g, ""); }
   get firstChild() { return this.children[0] || null; }
+  get value() {
+    if (this._value !== undefined) return this._value;
+    if (this.tagName === "SELECT") {
+      const opt = this.findAll("option").find((o) => o.selected);
+      return opt ? (opt.getAttribute("value") || "") : "";
+    }
+    const v = this.getAttribute("value");
+    return v === null ? "" : v;
+  }
+  set value(v) {
+    this._value = v == null ? "" : String(v);
+    if (this.tagName === "SELECT") {
+      this.findAll("option").forEach((o) => {
+        o.selected = String(o.getAttribute("value")) === this._value;
+      });
+    }
+  }
   append(...kids) {
     for (const k of kids.flat()) {
       if (k === null || k === undefined || k === false) continue;

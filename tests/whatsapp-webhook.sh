@@ -12,7 +12,12 @@ set -uo pipefail
 BASE="${VISBOT_BASE:-http://127.0.0.1:9001}"
 HOOK="$BASE/api/meta/webhook"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DB=$(grep -E '^DATABASE_URL=' "$DIR/server/.env" | cut -d= -f2-)
+# A value out of a .env file. dotenv strips surrounding quotes, so this has to
+# as well: a password containing a '#' must be quoted in the file, and without
+# this the quotes arrive as part of the password.
+envval() { grep -E "^$2=" "$1" | cut -d= -f2- | sed -e 's/^"\(.*\)"$/\1/' -e "s/^'\(.*\)'\$/\1/"; }
+
+DB=$(envval "$DIR/server/.env" DATABASE_URL)
 
 SECRET="test-app-secret-$$"
 TOKEN="test-verify-$$"

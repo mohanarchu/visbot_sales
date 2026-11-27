@@ -2,10 +2,12 @@ import { api } from "../api.js";
 import {
   h, frag, icon, chip, panel, panelBody, table, rowActions, emptyState,
   field, input, textarea, select, formSection, formFoot, grid2, grid3, stack,
-  formData, toast, withBusy, confirmAction, skelCards, skelTable, skelForm, skelPanel,
+  formData, toast, withBusy, confirmAction, pager, pagedQuery, skelCards, skelTable, skelForm, skelPanel,
 } from "../ui.js";
-import { ago, fmtDate, fmtDateTime, dateInput, daysUntil, dueLabel, initials, waNumber } from "../fmt.js";
+import { ago, fmtDate, fmtDateTime, dateInput, daysUntil, dueLabel, initials, waNumber, fmtFee } from "../fmt.js";
 import { STATUSES, statusMeta, sourceLabel, priorityMeta, statusOptions, sourceOptions, priorityOptions } from "../vocab.js";
+import { FEE_KINDS } from "./referrers.js";
+import { referrerPicker } from "../widgets.js";
 
 const qs = (o) => {
   const sp = new URLSearchParams();
@@ -34,14 +36,14 @@ export const leadsList = {
 
     const tabs = h("nav.tabs",
       h("a.tab" + (!q.status && !q.due && !q.open ? ".active" : ""),
-        { href: qs({ q: q.q, source: q.source, priority: q.priority, state: q.state }) },
+        { href: qs({ q: q.q, source: q.source, priority: q.priority, state: q.state, period: q.period, from: q.from, to: q.to, per_page: q.per_page }) },
         "All ", h("span.tab-n", { text: String(allCount) })),
       STATUSES.map((s) =>
         h("a.tab" + (q.status === s.key ? ".active" : ""),
-          { href: qs({ status: s.key, q: q.q, source: q.source, priority: q.priority, state: q.state }) },
+          { href: qs({ status: s.key, q: q.q, source: q.source, priority: q.priority, state: q.state, period: q.period, from: q.from, to: q.to, per_page: q.per_page }) },
           s.label + " ", h("span.tab-n", { text: String(counts[s.key] || 0) }))),
       h("a.tab" + (q.due ? ".active" : ""),
-        { href: qs({ due: "1", q: q.q, source: q.source, priority: q.priority, state: q.state }) },
+        { href: qs({ due: "1", q: q.q, source: q.source, priority: q.priority, state: q.state, period: q.period, from: q.from, to: q.to, per_page: q.per_page }) },
         icon("clock"), "Follow-ups due"));
 
     const searchInput = h("input", {
@@ -65,11 +67,54 @@ export const leadsList = {
       { value: "none", label: "— no state given —" },
     ], q.state || "");
 
-    const apply = () => ctx.navigate(qs({
-      status: q.status, due: q.due, open: q.open,
-      q: searchInput.value.trim(), source: sourceSel.value, priority: prioSel.value,
-      state: stateSel.value,
-    }));
+    // When the lead arrived. The presets cover the everyday questions; the two
+    // date boxes are there for "what came in while I was away".
+    const custom = !!(q.from || q.to);
+    const periodSel = select("period", [
+      { value: "", label: "Any time" },
+      { value: "today", label: "Today" },
+      { value: "yesterday", label: "Yesterday" },
+      { value: "7d", label: "Last 7 days" },
+      { value: "30d", label: "Last 30 days" },
+      { value: "month", label: "This month" },
+      { value: "custom", label: "Between two dates…" },
+    ], custom ? "custom" : (q.period || ""));
+
+    const fromInput = h("input", {
+      type: "date", name: "from", value: q.from || "", "aria-label": "Received from",
+    });
+    const toInput = h("input", {
+      type: "date", name: "to", value: q.to || "", "aria-label": "Received until",
+    });
+    const dateRange = h("span.date-range" + (custom || periodSel.value === "custom" ? "" : ".is-hidden"),
+      fromInput, h("span.date-sep", { text: "to" }), toInput);
+
+    const apply = () => {
+      const useCustom = periodSel.value === "custom";
+      ctx.navigate(qs({
+        status: q.status, due: q.due, open: q.open, per_page: q.per_page,
+        q: searchInput.value.trim(), source: sourceSel.value, priority: prioSel.value,
+        state: stateSel.value,
+        // The two are exclusive: a preset and a pair of dates would contradict
+        // each other, and the server would quietly let the dates win.
+        period: useCustom ? "" : periodSel.value,
+        from: useCustom ? fromInput.value : "",
+        to: useCustom ? toInput.value : "",
+      }));
+    };
+
+    periodSel.addEventListener("change", () => {
+      if (periodSel.value === "custom") {
+        // Reveal the boxes and wait: navigating now would filter on nothing.
+        dateRange.classList.remove("is-hidden");
+        fromInput.focus();
+        return;
+      }
+      dateRange.classList.add("is-hidden");
+      apply();
+    });
+    fromInput.addEventListener("change", () => { if (fromInput.value || toInput.value) apply(); });
+    toInput.addEventListener("change", () => { if (fromInput.value || toInput.value) apply(); });
 
     sourceSel.addEventListener("change", apply);
     prioSel.addEventListener("change", apply);
@@ -77,9 +122,9 @@ export const leadsList = {
 
     const toolbar = h("form.toolbar", { onsubmit: (e) => { e.preventDefault(); apply(); } },
       h("div.search", icon("search"), searchInput),
-      sourceSel, stateSel, prioSel,
+      sourceSel, stateSel, prioSel, periodSel, dateRange,
       h("button.btn.btn--ghost", { type: "submit" }, "Search"),
-      (q.q || q.source || q.priority || q.state)
+      (q.q || q.source || q.priority || q.state || q.period || q.from || q.to)
         ? h("a.btn.btn--ghost", { href: qs({ status: q.status, due: q.due, open: q.open }) }, "Clear")
         : null,
       h("span.spacer"),
@@ -99,7 +144,10 @@ export const leadsList = {
               .filter(Boolean).join(" · ") || "No contact details",
           })),
         h("td.sub", { style: { maxWidth: "260px" }, text: l.interest || "—" }),
-        h("td.sub.nowrap", { text: sourceLabel(l.source) }),
+        // A referral says little without the name of who sent it.
+        h("td.sub.nowrap", l.referrer_name
+          ? frag(sourceLabel(l.source), h("span.muted", { text: " \u00b7 " + l.referrer_name }))
+          : sourceLabel(l.source)),
         h("td", chip(sm.label, sm.chip || "plain")),
         // Who is on it, so the office can see at a glance what is unassigned.
         h("td.sub.nowrap", l.owner
@@ -124,15 +172,7 @@ export const leadsList = {
               "Received", { label: "", right: true }],
             rows,
           }),
-          meta.pages > 1
-            ? h("div.pager",
-                h("span.muted", { text: `Page ${meta.page} of ${meta.pages}` }),
-                h("span.spacer"),
-                meta.page > 1 ? h("a.btn.btn--ghost.btn--sm",
-                  { href: qs({ ...q, page: meta.page - 1 }) }, "Previous") : null,
-                meta.page < meta.pages ? h("a.btn.btn--ghost.btn--sm",
-                  { href: qs({ ...q, page: meta.page + 1 }) }, "Next") : null)
-            : null)
+          pager(meta, (n, per) => qs(pagedQuery(q, n, per))))
       : emptyState({
           iconName: "users",
           title: allCount ? "No leads match this filter" : "No leads yet",
@@ -268,6 +308,17 @@ export const leadDetail = {
       kv("Location", h("dd", { text: [l.city, l.state].filter(Boolean).join(", ") || "—" })),
       kv("Interested in", h("dd", { text: l.interest || "—" })),
       kv("Source", h("dd", { text: sourceLabel(l.source) })),
+      l.referrer_id
+        ? kv("Referred by", h("dd",
+            h("a", { href: "/referrers/" + l.referrer_id, text: l.referrer_name }),
+            l.referrer_phone ? h("span.muted", { text: " \u00b7 " + l.referrer_phone }) : null,
+            l.referrer_active === false ? chip("switched off", "muted") : null))
+        : null,
+      l.referral_kind
+        ? kv("Referral fee", h("dd", { text: fmtFee(l.referral_kind, l.referral_value) }))
+        : (l.referrer_id
+            ? kv("Referral fee", h("dd", h("span.muted", { text: "Not agreed yet" })))
+            : null),
       l.meta_campaign_name ? kv("Campaign", h("dd", { text: l.meta_campaign_name })) : null,
       l.meta_ad_name ? kv("Ad", h("dd", { text: l.meta_ad_name })) : null,
       (l.meta_form_name || l.meta_form_id)
@@ -391,12 +442,15 @@ export const leadForm = {
   back: (ctx) => (ctx.params.id ? "/leads/" + ctx.params.id : "/leads"),
   skeleton: () => skelForm(),
   load: async (ctx) => {
-    const [lead, team, states] = await Promise.all([
+    const [lead, team, states, referrers] = await Promise.all([
       ctx.params.id ? api.get("/leads/" + ctx.params.id) : Promise.resolve(null),
       api.get("/users/assignable"),
       api.get("/states"),
+      // Who can be offered under "Referred by". A failure here must not stop a
+      // lead being entered, so the form falls back to a plain text box.
+      api.get("/referrers/suggest").catch(() => ({ data: [] })),
     ]);
-    return { lead, team: team.data, states: states.data };
+    return { lead, team: team.data, states: states.data, referrers: referrers.data };
   },
   titleFrom: (res, ctx) => (ctx.params.id ? "Edit " + res.lead.data.lead.name : "Add a lead"),
 
@@ -404,6 +458,63 @@ export const leadForm = {
     const l = res.lead ? res.lead.data.lead : null;
     const team = res.team || [];
     const save = h("button.btn", { type: "submit" }, icon("check"), l ? "Save changes" : "Create lead");
+
+    // ---- who referred this lead
+    // The whole section belongs to one answer in the Source dropdown, so it is
+    // built here and shown or hidden as that answer changes. Nothing is asked
+    // of somebody entering a phone enquiry.
+    const sourceSel = select("source", sourceOptions(), l ? l.source : "phone");
+    const refName = input("referrer_name", l && l.referrer_name,
+      { placeholder: "e.g. Ramesh Kumar", autocomplete: "off" });
+    const refPhone = input("referrer_phone", l && l.referrer_phone,
+      { placeholder: "+91 98765 43210", autocomplete: "off" });
+    // Typing a name already on file offers it and fills in their mobile; a new
+    // name is just typed, and the server creates the referrer on save.
+    const refList = referrerPicker(refName, refPhone, res.referrers || []);
+    const feeKind = select("referral_kind", FEE_KINDS, (l && l.referral_kind) || "");
+    const feeValue = input("referral_value",
+      l && l.referral_value != null ? l.referral_value : "",
+      { type: "number", step: "0.01", min: "0", placeholder: "0" });
+
+    // The amount means a different thing for each kind of fee, so the label
+    // says which rather than leaving a bare number box.
+    const feeName = h("span", { text: "Flat amount" });
+    const feeHint = h("span.hint", { text: " in rupees" });
+    const feeValueField = h("label.field", h("span.lbl", feeName, feeHint), feeValue);
+
+    const referralSection = formSection({
+      title: "Who referred this lead?",
+      text: "Saved against the referrer, so everything one person sends in is counted "
+          + "together. The same mobile number is treated as the same person.",
+      body: stack(
+        grid2(
+          field({ label: "Referred by",
+            hint: (res.referrers || []).length ? "pick someone, or type a new name" : "optional list builds up as you go",
+            input: frag(refName, refList) }),
+          field({ label: "Their mobile", hint: "fills in for someone already on file",
+            input: refPhone })),
+        h("div.grid-2.fee-row",
+          field({ label: "Referral fee", input: feeKind }),
+          feeValueField)),
+    });
+
+    const sync = () => {
+      const on = sourceSel.value === "referral";
+      const kind = feeKind.value;
+      referralSection.classList.toggle("is-hidden", !on);
+      feeValueField.classList.toggle("is-hidden", !kind);
+      // `required` on a hidden box would block the form with nothing to show
+      // the person, so it is only set while the box is on screen.
+      refName.required = on;
+      feeValue.required = on && !!kind;
+      // A number left behind after the fee is set back to "Not agreed yet"
+      // would be refused by the server, so it goes with the box.
+      if (!kind) feeValue.value = "";
+      feeName.textContent = kind === "percent" ? "Percentage of the order" : "Flat amount";
+      feeHint.textContent = kind === "percent" ? " 0 to 100" : " in rupees";
+    };
+    sourceSel.addEventListener("change", sync);
+    feeKind.addEventListener("change", sync);
 
     const form = h("form.panel", {
       onsubmit: async (e) => {
@@ -450,7 +561,7 @@ export const leadForm = {
         text: "Where this lead came from, how hot it is, and when to chase it next.",
         body: stack(
           grid3(
-            field({ label: "Source", input: select("source", sourceOptions(), l ? l.source : "phone") }),
+            field({ label: "Source", input: sourceSel }),
             field({ label: "Status", input: select("status", statusOptions(), l ? l.status : "new") }),
             field({ label: "Priority", input: select("priority", priorityOptions(), l ? l.priority : "medium") })),
           grid2(
@@ -474,8 +585,10 @@ export const leadForm = {
             field({ label: "Next follow-up", hint: "optional",
               input: input("next_followup", l ? dateInput(l.next_followup) : "", { type: "date" }) }))),
       }),
+      referralSection,
       formFoot(save, h("a.btn.btn--ghost", { href: l ? "/leads/" + l.id : "/leads" }, "Cancel")));
 
+    sync();
     return form;
   },
 };

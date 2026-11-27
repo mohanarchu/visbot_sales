@@ -80,12 +80,12 @@ function verifySignature(rawBody, header, appSecret) {
 }
 
 // ---------- Graph API ----------
-async function graph(path, params, cfg) {
+async function graph(path, params, cfg, token) {
   const url = new URL(`${GRAPH}/${cfg.meta_api_version}/${path}`);
   for (const [k, v] of Object.entries(params || {})) {
     if (v !== undefined && v !== null) url.searchParams.set(k, v);
   }
-  url.searchParams.set("access_token", cfg.meta_page_token);
+  url.searchParams.set("access_token", token || cfg.meta_page_token);
 
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   const body = await res.json().catch(() => ({}));
@@ -96,6 +96,38 @@ async function graph(path, params, cfg) {
     throw err;
   }
   return body;
+}
+
+// Meta accepts two kinds of token here and they are not interchangeable.
+// A *system user* token can read the Page itself, but the page-scoped edges —
+// the lead forms, and reading a lead back — are refused with
+// "(#190) This method must be called with a Page Access Token".
+//
+// Rather than make somebody find and paste a second token, ask Meta for the
+// Page's own token using the one that is already saved. A Page token derived
+// from a system user token that never expires does not expire either, so this
+// is the permanent arrangement, not a workaround.
+//
+// Cached against the saved token, so replacing the token in the panel discards
+// the derived one automatically.
+let derived = { from: null, token: null };
+
+async function pageToken(cfg) {
+  const saved = cfg.meta_page_token;
+  if (!saved || !cfg.meta_page_id) return saved;
+  if (derived.from === saved && derived.token) return derived.token;
+  try {
+    const r = await graph(cfg.meta_page_id, { fields: "access_token" }, cfg, saved);
+    if (r && r.access_token) {
+      derived = { from: saved, token: r.access_token };
+      return r.access_token;
+    }
+  } catch {
+    // Already a Page token, or the Page is unreachable — either way the saved
+    // token is the best we have, and the caller reports the real error.
+  }
+  derived = { from: saved, token: saved };
+  return saved;
 }
 
 const LEAD_FIELDS = [
@@ -112,11 +144,12 @@ async function testConnection(cfg) {
 }
 
 async function listForms(cfg) {
-  return graph(`${cfg.meta_page_id}/leadgen_forms`, { fields: "id,name,status,leads_count", limit: 100 }, cfg);
+  return graph(`${cfg.meta_page_id}/leadgen_forms`,
+    { fields: "id,name,status,leads_count", limit: 100 }, cfg, await pageToken(cfg));
 }
 
 async function fetchLead(leadgenId, cfg) {
-  return graph(leadgenId, { fields: LEAD_FIELDS }, cfg);
+  return graph(leadgenId, { fields: LEAD_FIELDS }, cfg, await pageToken(cfg));
 }
 
 // ---------- field mapping ----------
@@ -263,7 +296,7 @@ async function syncLeads(cfg, sinceDays = 30) {
     do {
       const body = next
         ? await (await fetch(next, { signal: AbortSignal.timeout(15000) })).json()
-        : await graph(`${formId}/leads`, { fields: LEAD_FIELDS, limit: 100 }, cfg);
+        : await graph(`${formId}/leads`, { fields: LEAD_FIELDS, limit: 100 }, cfg, await pageToken(cfg));
 
       const rows = body.data || [];
       let tooOld = false;

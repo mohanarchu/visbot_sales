@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import {
   h, frag, icon, chip, panel, panelBody, table, rowActions, emptyState, statCard,
   field, input, textarea, select, formSection, formFoot, grid2, grid3, stack,
-  formData, toast, withBusy, confirmAction, skelTable, skelForm, skelPanel, skelCards,
+  formData, toast, withBusy, confirmAction, pager, pagedQuery, skelTable, skelForm, skelPanel, skelCards,
 } from "../ui.js";
 import { fmtDate, dateInput, ago, fmtDateTime, waNumber, dueLabel, daysUntil } from "../fmt.js";
 
@@ -106,13 +106,7 @@ export const serviceHistoryList = {
                   h("a.btn.btn--ghost.btn--sm", { href: "/service/history/" + v.id }, "Open", icon("arrow")))));
             }),
           }),
-          meta.pages > 1
-            ? h("div.pager",
-                h("span.muted", { text: `Page ${meta.page} of ${meta.pages}` }),
-                h("span.spacer"),
-                meta.page > 1 ? h("a.btn.btn--ghost.btn--sm", { href: qs({ ...q, page: meta.page - 1 }) }, "Previous") : null,
-                meta.page < meta.pages ? h("a.btn.btn--ghost.btn--sm", { href: qs({ ...q, page: meta.page + 1 }) }, "Next") : null)
-            : null)
+          pager(meta, (n, per) => qs(pagedQuery(q, n, per))))
       : emptyState({
           iconName: "wrench",
           title: q.due === "1" ? "Nothing falls due in the next 30 days"

@@ -5,7 +5,7 @@ import { api } from "../api.js";
 import {
   h, frag, icon, chip, panel, panelBody, table, rowActions, emptyState,
   field, input, select, formSection, formFoot, stack, grid2,
-  formData, toast, withBusy, confirmAction, skelTable, skelForm,
+  formData, toast, withBusy, confirmAction, pager, pageHref, skelTable, skelForm,
 } from "../ui.js";
 import { fmtDateTime, ago } from "../fmt.js";
 import { ROLES, roleMeta, roleOptions } from "../vocab.js";
@@ -27,7 +27,7 @@ export const usersList = {
   subtitle: "Who can sign in, and what they can reach",
   nav: "users",
   skeleton: () => skelTable(6),
-  load: (ctx) => api.get("/users", { q: ctx.query.q, role: ctx.query.role }),
+  load: (ctx) => api.get("/users", { q: ctx.query.q, role: ctx.query.role, page: ctx.query.page }),
 
   render(res, ctx) {
     const rows = res.data;
@@ -120,7 +120,7 @@ export const usersList = {
         h("dd", { text: r.blurb }))))),
     });
 
-    return frag(form, h("div.panel", body),
+    return frag(form, h("div.panel", body, pager(res.meta, pageHref("/users", ctx.query))),
       h("div", { style: { marginTop: "1.3rem" } }, roleCards),
       h("p.muted", { style: { fontSize: ".85rem", marginTop: "1rem" },
         text: "Everyone signs in with their mobile number or their email address — there is no username. "

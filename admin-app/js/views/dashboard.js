@@ -1,6 +1,6 @@
 import { api } from "../api.js";
 import {
-  h, frag, icon, chip, panel, panelBody, statCard, bars, table,
+  h, frag, icon, chip, panel, panelBody, statCard, bars, columns, table,
   emptyState, skelCards, skelPanel,
 } from "../ui.js";
 import { ago, fmtDateTime, daysUntil, dueLabel } from "../fmt.js";
@@ -14,9 +14,12 @@ export const dashboard = {
   load: () => api.get("/dashboard"),
 
   render({ data }) {
-    const { stats, byStatus, bySource, topInterest, recent, dueSoon, service } = data;
+    const { stats, byStatus, bySource, topInterest, recent, dueSoon, service,
+            daily = [], monthly = [] } = data;
 
     const cards = h("div.stats",
+      statCard({ value: stats.today_count || 0, caption: "Arrived today", iconName: "calendar",
+                 href: "/leads?period=today", variant: stats.today_count ? "accent" : null }),
       statCard({ value: stats.new_count, caption: "New, not yet contacted", iconName: "spark",
                  href: "/leads?status=new", variant: stats.new_count ? "accent" : null }),
       statCard({ value: stats.open_count, caption: "Open in pipeline", iconName: "pipeline", href: "/leads?open=1" }),
@@ -107,6 +110,64 @@ export const dashboard = {
           })))) : null),
     });
 
+    // Day and month labels are built here rather than in SQL so they read the
+    // way the office says them.
+    const DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const asDate = (v) => {
+      // The server sends a plain date; parsing it by hand avoids a timezone
+      // shift that would label every column with the day before.
+      const [y, m, d] = String(v).slice(0, 10).split("-").map(Number);
+      return new Date(y, (m || 1) - 1, d || 1);
+    };
+
+    const dailyTotal = daily.reduce((a, r) => a + r.n, 0);
+    const busiest = daily.reduce((best, r) => (r.n > (best ? best.n : -1) ? r : best), null);
+
+    const trend = panel({
+      title: "Enquiries, last 14 days",
+      hint: dailyTotal + " in total",
+      body: panelBody(
+        columns(daily.map((r, i) => {
+          const d = asDate(r.day);
+          const isToday = i === daily.length - 1;
+          return {
+            label: String(d.getDate()),
+            sub: isToday ? "today" : DAY[d.getDay()],
+            n: r.n,
+            href: "/leads?from=" + String(r.day).slice(0, 10) + "&to=" + String(r.day).slice(0, 10),
+            title: `${DAY[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}: ${r.n} enquir${r.n === 1 ? "y" : "ies"}`
+                   + (r.won ? `, ${r.won} won` : ""),
+          };
+        })),
+        busiest && busiest.n
+          ? h("p.muted", { style: { margin: ".9rem 0 0", fontSize: ".85rem" } },
+              "Busiest day was ",
+              h("b", { text: asDate(busiest.day).getDate() + " " + MON[asDate(busiest.day).getMonth()] }),
+              ` with ${busiest.n}. Click a column to see that day's leads.`)
+          : h("p.muted", { style: { margin: ".9rem 0 0", fontSize: ".85rem" },
+              text: "No enquiries in the last fortnight." })),
+    });
+
+    const byMonth = panel({
+      title: "Last six months",
+      hint: "Enquiries received",
+      body: panelBody(
+        columns(monthly.map((r) => {
+          const d = asDate(r.month);
+          return {
+            label: MON[d.getMonth()],
+            sub: String(d.getFullYear()).slice(2),
+            n: r.n,
+            title: `${MON[d.getMonth()]} ${d.getFullYear()}: ${r.n} enquiries`
+                   + (r.won ? `, ${r.won} won` : ""),
+          };
+        })),
+        h("p.muted", { style: { margin: ".9rem 0 0", fontSize: ".85rem" },
+          text: "Counted by the month the enquiry arrived, in Indian time." })),
+    });
+
     const quick = panel({
       title: "Quick actions",
       body: panelBody(h("div.actions-grid",
@@ -116,6 +177,10 @@ export const dashboard = {
         h("a.action-card", { href: "/website" }, icon("globe"), "Manage website content"))),
     });
 
-    return frag(cards, h("div.cols", pipeline, followups), h("div.cols", latest, sources), quick);
+    return frag(cards,
+      h("div.cols", trend, byMonth),
+      h("div.cols", pipeline, followups),
+      h("div.cols", latest, sources),
+      quick);
   },
 };

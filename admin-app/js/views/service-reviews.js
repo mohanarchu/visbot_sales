@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import {
   h, frag, icon, chip, panel, panelBody, table, rowActions, emptyState, statCard,
   field, input, textarea, select, checkbox, formSection, formFoot, grid2, grid3, stack,
-  formData, toast, withBusy, confirmAction, skelTable, skelForm, skelCards,
+  formData, toast, withBusy, confirmAction, pager, pageHref, skelTable, skelForm, skelCards,
 } from "../ui.js";
 import { fmtDate, ago, fmtDateTime } from "../fmt.js";
 import { SERVICE_LOGS } from "../features.js";
@@ -125,7 +125,7 @@ export const serviceReviewsList = {
             : h("a.btn", { href: "/service/reviews/new" }, icon("plus"), "Add a review"),
         });
 
-    return frag(cards, tabs, toolbar, h("div.panel", body),
+    return frag(cards, tabs, toolbar, h("div.panel", body, pager(res.meta, pageHref("/service/reviews", ctx.query))),
       h("p.muted", { style: { fontSize: ".85rem", marginTop: "1rem" },
         text: "Nothing a customer writes reaches the website on its own — a review only appears on the Service page once you publish it, and taking it off again is immediate." }));
   },
@@ -140,7 +140,7 @@ export const serviceReviewForm = {
   skeleton: () => skelForm(),
   load: async (ctx) => {
     const [all, visits] = await Promise.all([
-      api.get("/service/reviews"),
+      api.get("/service/reviews", { all: 1 }),
       // Nothing to link to while the service log is switched off.
       SERVICE_LOGS ? api.get("/service/visits", { q: "" }) : Promise.resolve({ data: [] }),
     ]);

@@ -111,3 +111,39 @@ export function linkSlug(nameInput, slugInput) {
       .replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   });
 }
+
+// Offer the referrers already on file while a name is being typed, and fill in
+// that person's mobile number once the name matches one of them.
+//
+// A native <datalist>, as the machine field on a service record uses: the
+// browser draws and filters the list, so there is no dropdown of our own to
+// get wrong, and typing a name nobody has used before is still just typing.
+//
+// Returns the <datalist> to put in the form.
+export function referrerPicker(nameInput, phoneInput, referrers) {
+  const id = "referrer-names";
+  nameInput.setAttribute("list", id);
+
+  const byName = new Map();
+  referrers.forEach((r) => {
+    const key = String(r.name || "").trim().toLowerCase();
+    // First one wins, so a repeated name resolves the same way the server does.
+    if (key && !byName.has(key)) byName.set(key, r);
+  });
+
+  // A number the office typed by hand is never overwritten, the same rule the
+  // slug field follows.
+  let touched = String(phoneInput.value || "").trim() !== "";
+  phoneInput.addEventListener("input", () => { touched = true; });
+
+  nameInput.addEventListener("input", () => {
+    if (touched) return;
+    const hit = byName.get(nameInput.value.trim().toLowerCase());
+    // Only fills; never clears, so backspacing through a name does not empty a
+    // number that was just filled in.
+    if (hit && hit.phone) phoneInput.value = hit.phone;
+  });
+
+  return h("datalist", { id },
+    referrers.map((r) => h("option", { value: r.name, label: r.phone || "" })));
+}

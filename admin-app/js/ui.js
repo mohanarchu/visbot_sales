@@ -80,6 +80,110 @@ export function bars(rows) {
       h("span.n", { text: String(r.n) }))));
 }
 
+// A column chart, built from ordinary elements rather than SVG because h()
+// creates HTML nodes and an SVG child needs its own namespace.
+//
+// rows: [{ label, n, sub, href, title }] — label goes under the column, sub is
+// the smaller second line (a month, a weekday), title is the hover text.
+// Empty buckets are kept and drawn as a baseline tick: a quiet day is a fact,
+// and dropping it would make a slow week look busy.
+export function columns(rows, { height = 120, highlightLast = true } = {}) {
+  if (!rows.length) return null;
+  const max = Math.max(1, ...rows.map((r) => r.n));
+
+  const col = (r, i) => {
+    const pct = Math.round((r.n / max) * 100);
+    const bar = h("span.col-bar" + (r.n === 0 ? ".is-zero" : ""), {
+      style: { height: Math.max(pct, r.n === 0 ? 0 : 4) + "%" },
+    });
+    const body = h("span.col-stack",
+      h("span.col-n", { text: r.n ? String(r.n) : "" }),
+      bar);
+    const label = h("span.col-label", { text: r.label },
+      r.sub ? h("em", { text: r.sub }) : null);
+    const cls = ".col" + (highlightLast && i === rows.length - 1 ? ".is-now" : "");
+    const title = r.title || `${r.label}: ${r.n}`;
+    return r.href
+      ? h("a" + cls, { href: r.href, title }, body, label)
+      : h("div" + cls, { title }, body, label);
+  };
+
+  return h("div.chart",
+    h("div.chart-plot", { style: { height: height + "px" } }, rows.map(col)),
+    h("div.chart-foot",
+      h("span", { text: "0" }),
+      h("span", { text: "peak " + max })));
+}
+
+// The row counts a list can be set to. Must match PER_PAGE_CHOICES on the
+// server, which refuses anything else.
+export const PER_PAGE_CHOICES = [10, 25, 50, 100];
+const DEFAULT_PER_PAGE = 25;
+
+// Builds `hrefFor` for pager(): keeps the filters already in the URL and
+// swaps the page number, leaving page 1 off so the first page has a clean URL.
+//
+// Called as hrefFor(page) for a page link, or hrefFor(1, rows) to change the
+// page size. The default size is left out of the URL for the same reason.
+export const pageHref = (path, query) => (n, per) => {
+  const sp = new URLSearchParams();
+  Object.entries(query || {}).forEach(([k, v]) => {
+    if (v && k !== "page" && !(per && k === "per_page")) sp.set(k, v);
+  });
+  if (per && per !== DEFAULT_PER_PAGE) sp.set("per_page", per);
+  if (n > 1) sp.set("page", n);
+  const s = sp.toString();
+  return path + (s ? "?" + s : "");
+};
+
+// The same merge as pageHref, for the lists that build their own query string:
+//
+//   pager(meta, (n, per) => qs(pagedQuery(q, n, per)))
+//
+export const pagedQuery = (q, n, per) => Object.assign({}, q, {
+  per_page: per ? (per === DEFAULT_PER_PAGE ? "" : per) : (q.per_page || ""),
+  page: n > 1 ? n : "",
+});
+
+// The pager under a list. `hrefFor(page)` builds the link for a page number,
+// so each list keeps its own filters in the URL.
+//
+// It shows on a single page too, where it is a row count and a way to change
+// the page size \u2014 a control you cannot reach is the same as one that is not
+// there. Only the step buttons, which would all be dead, are left off.
+export function pager(meta, hrefFor) {
+  if (!meta || !meta.total) return null;
+  const per = meta.per_page || DEFAULT_PER_PAGE;
+  const pages = meta.pages || 1;
+  const from = (meta.page - 1) * per + 1;
+  const to = Math.min(meta.page * per, meta.total);
+
+  const step = (n, label, enabled) =>
+    enabled ? h("a.btn.btn--ghost.btn--sm", { href: hrefFor(n) }, label)
+            : h("span.btn.btn--ghost.btn--sm.is-off", { "aria-disabled": "true", text: label });
+
+  // A size bigger than the list itself would page nothing, so it is not
+  // offered; the current one always is, so you can get back off it.
+  const sizes = PER_PAGE_CHOICES.filter((n) => n < meta.total || n === per);
+  const rowsPicker = sizes.length > 1
+    ? h("span.per-page",
+        h("span.muted", { text: "Rows" }),
+        ...sizes.map((n) => n === per
+          ? h("span.per-page-on", { text: String(n) })
+          : h("a", { href: hrefFor(1, n), text: String(n) })))
+    : null;
+
+  return h("div.pager",
+    h("span.muted", { text: `Showing ${from}\u2013${to} of ${meta.total}` }),
+    rowsPicker,
+    h("span.spacer"),
+    pages > 1 ? step(1, "\u00ab First", meta.page > 1) : null,
+    pages > 1 ? step(meta.page - 1, "Previous", meta.page > 1) : null,
+    pages > 1 ? h("span.muted.nowrap", { text: `Page ${meta.page} of ${pages}` }) : null,
+    pages > 1 ? step(meta.page + 1, "Next", meta.page < pages) : null,
+    pages > 1 ? step(pages, "Last \u00bb", meta.page < pages) : null);
+}
+
 export function table({ head, rows, empty }) {
   if (!rows.length && empty) return empty;
   return h("div.table-wrap",

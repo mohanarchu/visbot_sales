@@ -377,9 +377,17 @@ router.put("/leads/:id(\\d+)", async (req, res, next) => {
     const own = await ownerFor(req, b, existing);
 
     const { rows } = await db.query(
+      // The referral columns are not editable from the sales app, but a rep can
+      // change the source. Moving a lead off "Referral" has to clear the fee
+      // with it, or the lead would go on owing a commission for a referral it
+      // no longer claims. $9 is the source being saved.
       `UPDATE leads SET name=$1, phone=$2, email=$3, company=$4, city=$5, state=$6,
          interest=$7, message=$8, source=$9, status=$10, priority=$11,
-         owner=$12, owner_user_id=$13, next_followup=$14, updated_at=now()
+         owner=$12, owner_user_id=$13, next_followup=$14,
+         referrer_id    = CASE WHEN $9 = 'referral' THEN referrer_id    ELSE NULL END,
+         referral_kind  = CASE WHEN $9 = 'referral' THEN referral_kind  ELSE NULL END,
+         referral_value = CASE WHEN $9 = 'referral' THEN referral_value ELSE NULL END,
+         updated_at=now()
        WHERE id=$15 RETURNING id`,
       [name, keep("phone", b.phone), keep("email", b.email), keep("company", b.company),
         keep("city", b.city), keep("state", b.state), keep("interest", b.interest),

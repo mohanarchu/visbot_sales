@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import {
   h, frag, icon, chip, panel, panelBody, table, rowActions, emptyState,
   field, input, formSection, formFoot, stack, formData,
-  toast, withBusy, confirmAction, skelTable, skelPanel, skelForm,
+  toast, withBusy, confirmAction, pager, pagedQuery, skelTable, skelPanel, skelForm,
 } from "../ui.js";
 import { ago, fmtDate, fmtDateTime, initials, waNumber } from "../fmt.js";
 import { SERVICE_LOGS } from "../features.js";
@@ -69,13 +69,7 @@ export const serviceList = {
                   h("a.btn.btn--ghost.btn--sm", { href: "/service/" + r.id }, "Open", icon("arrow")))));
             }),
           }),
-          meta.pages > 1
-            ? h("div.pager",
-                h("span.muted", { text: `Page ${meta.page} of ${meta.pages}` }),
-                h("span.spacer"),
-                meta.page > 1 ? h("a.btn.btn--ghost.btn--sm", { href: qs({ q: q.q, page: meta.page - 1 }) }, "Previous") : null,
-                meta.page < meta.pages ? h("a.btn.btn--ghost.btn--sm", { href: qs({ q: q.q, page: meta.page + 1 }) }, "Next") : null)
-            : null)
+          pager(meta, (n, per) => qs(pagedQuery({ q: q.q, per_page: q.per_page }, n, per))))
       : emptyState({
           iconName: "wrench",
           title: allCount ? "No requests match your search" : "No service requests yet",
